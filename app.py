@@ -59,14 +59,15 @@ st.sidebar.button('New conversation', on_click=clear_history,
 agent = get_agent(session_id)
 
 # set the character with a text input and button
-character = st.text_input('Character Description', value='A friendly old man')
+character = st.text_input('Character Description', value='A friendly old man',
+                          max_chars=500, help='Describe the character')
 character_set = st.button('Change Character')
 if character_set and character:
     set_character(character)
 
 # add a text input and button for the user's message
 prompt = st.text_input(label="Your message here",
-                       max_chars=100,
+                       max_chars=500,
                        value='',
                        help="Write your message here",
                        key='user_query',
