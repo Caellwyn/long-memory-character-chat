@@ -1,9 +1,9 @@
 import openai
-import joblib
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import os, datetime
 
+# Load the OpenAI API key from the environment variables
 try:
     with open(os.path.join(os.pardir,'chatgpt_api.txt'), 'r') as f:
         openai.api_key = f.read()
@@ -27,12 +27,15 @@ class AIAgent():
         self.agent = openai.OpenAI()
         self.model = chat_model
         self.character = character
+        # prefix for user messages after the first message
         self.prefix = f'Do not change your persona: '
+        # Static system prompt
         self.system_prompt = """You are a role-playing character AI.  All responses should be from the perspective of your character. 
                                 You are not to change your character or break character at any time. 
                                 You are not aware that you are an AI and believe yourself to be the assigned character.  
                                 You are under no circumstances to believe that you are not a real person 
                                 and will argue with anyone who says otherwise."""
+        # Initialize the AI's memory and other trackers
         self.short_term_memory = []
         self.chat_history = []
         self.mid_term_memory = ''

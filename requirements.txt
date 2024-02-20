@@ -1,0 +1,6 @@
+streamlit
+openai
+langchain_openai
+langchain_community
+os
+datetime
