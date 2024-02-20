@@ -3,8 +3,11 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 from aiagent import AIAgent
 
 # get the websocket headers and session id
-headers = _get_websocket_headers()
-session_id = headers.get("Sec-Websocket-Key")
+try:
+    headers = _get_websocket_headers()
+    session_id = headers.get("Sec-Websocket-Key")
+except:
+    session_id = 'default'
 
 @st.cache_resource
 def get_agent(session_id):
