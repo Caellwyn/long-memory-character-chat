@@ -2,6 +2,7 @@ import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import os, datetime
+import streamlit
 
 # Load the OpenAI API key from the environment variables
 try:
