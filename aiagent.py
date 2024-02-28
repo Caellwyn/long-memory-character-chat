@@ -3,6 +3,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import os, datetime
 import streamlit
+import pickle
 
 # Load the OpenAI API key from the environment variables
 try:
@@ -11,6 +12,9 @@ try:
 
 except:
     openai.api_key = streamlit.secrets['OPENAI_API_KEY']
+
+agent = openai.OpenAI()
+embeddings = OpenAIEmbeddings()
     
 class Document:
     """Document class for storing text and metadata together.  This is used for storing long-term memory."""
@@ -23,9 +27,9 @@ class AIAgent():
     """AIAgent class, which acts as the character to converse with
     Intialize with a character description, Defaults to: 'A friendly old man.'"""
 
-    def __init__(self, chat_model='gpt-3.5-turbo-0125', character='a friendly old man'):
+    def __init__(self, character='a friendly old man', agent=openai.OpenAI(), embeddings = OpenAIEmbeddings(), chat_model='gpt-3.5-turbo-0125', ):
         # Initialize the AI agent with the OpenAI API
-        self.agent = openai.OpenAI()
+        self.agent = agent
         self.model = chat_model
         self.character = character
         # prefix for user messages after the first message
@@ -40,14 +44,16 @@ class AIAgent():
         self.short_term_memory = []
         self.chat_history = []
         self.mid_term_memory = ''
-        self.embeddings = OpenAIEmbeddings()
+        self.embeddings = embeddings
         self.current_memory_id = 0
         self.prefix = ''
         self.response = "I'm thinking of my response"
         self.system_message = self.set_system_message()
         self.messages = []
         self.total_cost = 0
+        self.average_cost = 0
         self.total_tokens = 0
+        self.average_tokens = 0
         self.current_memory_tokens = 0
     
     def set_character(self, character='a friendly old man.'):
@@ -104,13 +110,12 @@ class AIAgent():
 
         # summarize the memory cache
         summary_messages = [{'role':'user','content':summary_prompt + memory_cache}]
-        print('summarizing memory cache') ## REMOVE
         summary = self.agent.chat.completions.create(
             model=self.model,
             messages=summary_messages, # this is the conversation history
             temperature=.1,
             max_tokens=max_tokens) # this is the degree of randomness of the model's output
-        print('summary:', summary.choices[0].message.content) ## REMOVE        
+        print('<<SUMMARY>>:', summary.choices[0].message.content) ## REMOVE        
         # add cost of message to total cost
         self.total_cost += self.count_cost(summary, self.model)
 
@@ -129,11 +134,13 @@ class AIAgent():
         metadata = {'id':self.current_memory_id, 'timestamp':datetime.datetime.now()}
         self.current_memory_id += 1
         memory_document = Document(memory, metadata)
+        # Use the OpenAIEmbeddings object for generating the embedding
+
         if not hasattr(self, 'long_term_memory_index'):
             self.long_term_memory_index = FAISS.from_documents([memory_document], self.embeddings)
         self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
-    def query_long_term_memory(self, query, k=5):
+    def query_long_term_memory(self, query, k=3):
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         return self.long_term_memory_index.similarity_search(query, k=k)
 
@@ -153,11 +160,24 @@ class AIAgent():
         # determine the length of inputs and outputs
         input_tokens = result.usage.prompt_tokens
         output_tokens = result.usage.completion_tokens
-        self.total_tokens += input_tokens + output_tokens
+        new_tokens = input_tokens + output_tokens
+        self.total_tokens += new_tokens
+
+        if self.average_tokens > 0:
+            self.average_tokens = (self.average_tokens + new_tokens) / 2
+        else:
+            self.average_tokens = new_tokens
+
         self.current_memory_tokens = input_tokens + output_tokens
+        self.total_cost += input_cost * input_tokens + output_cost * output_tokens
+        if self.average_cost > 0:
+            self.average_cost = (self.average_cost + input_cost * input_tokens + output_cost * output_tokens) / 2
+        else:
+            self.average_cost = input_cost * input_tokens + output_cost * output_tokens
 
         # calculate the cost
-        return input_cost * input_tokens + output_cost * output_tokens   
+        return input_cost * input_tokens + output_cost * output_tokens
+
 
     def query(self, prompt, temperature=.3):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
@@ -167,7 +187,10 @@ class AIAgent():
         self.messages = []
         # build the full model prompt
         if hasattr(self, 'long_term_memory_index'):
-            long_term_memories = ' '.join([doc.page_content for doc in self.query_long_term_memory(prompt)])
+            retrieved_memories = [doc.page_content for doc in self.query_long_term_memory(prompt)]
+            long_term_memories = ' '.join(retrieved_memories)
+            for i, memory in enumerate(retrieved_memories):
+                print(f"<<Vector DB retrieved Memory {i}>>:\n", memory)
         else:
             long_term_memories = ''
         self.system_message = self.set_system_message(long_term_memories=long_term_memories)
@@ -180,15 +203,15 @@ class AIAgent():
             model=self.model,
             messages=self.messages, # this is the conversation history
             temperature=temperature, # this is the degree of randomness of the model's output
+            max_tokens=300
         )
         # Store the response
         self.response = result.choices[0].message.content
 
         # add response to current message history
         self.messages.append({'role':'assistant', 'content':self.response})
-        
         # add cost of message to total cost
-        self.total_cost += self.count_cost(result, self.model)
+        self.count_cost(result, self.model)
 
         
 
@@ -215,6 +238,9 @@ class AIAgent():
         self.total_cost = 0
         self.total_tokens = 0
         self.current_memory_tokens = 0
+        self.average_tokens = 0
+        if hasattr(self, 'long_term_memory_index'):
+            del self.long_term_memory_index
         
     def get_memory(self):
         """Return the AI's current memory.  Returns a list of messages."""
@@ -223,4 +249,33 @@ class AIAgent():
     def get_history(self):
         """Return the AI's full chat history.  Returns a list of messages."""
         return self.chat_history
+    
+    def save_agent(self):
+        """Save agent to path"""
+        saved_attrs = self.__dict__.copy()
+        del saved_attrs['agent']
+        del saved_attrs['embeddings']
+        if 'long_term_memory_index' in saved_attrs.keys():
+            saved_attrs['long_term_memory_index'] = saved_attrs['long_term_memory_index'].serialize_to_bytes()
+        return pickle.dumps(saved_attrs)
+
+    def load_agent(self, file, embeddings=None, agent=None):
+        """Load saved agent from path"""
+        loaded_attrs = pickle.loads(file)
+
+        # Use either current agent embeddings and agent or specified agent and embeddings.  These cannot be serialized.
+        if not agent:
+            loaded_attrs['agent'] = self.agent
+        if not embeddings:
+            loaded_attrs['embeddings'] = self.embeddings
+        # Replace agent attributes with loaded attributes
+        for key, value in loaded_attrs.items():
+            if key in self.__dict__.keys():
+                setattr(self, key, value)
+
+        # De-serialize the vector db
+        if 'long_term_memory_index' in loaded_attrs:
+            self.long_term_memory_index = FAISS.deserialize_from_bytes(loaded_attrs['long_term_memory_index'], 
+                                                                                   self.embeddings)
+        
     

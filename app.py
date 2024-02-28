@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 from aiagent import AIAgent
 
+
 # get the websocket headers and session id
 try:
     headers = _get_websocket_headers()
@@ -15,6 +16,7 @@ def get_agent(session_id):
     agent = AIAgent(chat_model='gpt-3.5-turbo')
     print('creating the ai agent')
     return agent
+
 
 def format_history(history):
     """Format the conversation history for display.  Returns a string."""
@@ -45,6 +47,22 @@ def set_character(character):
     """Set the AI's character.  Returns nothing."""
     agent.set_character(character)
 
+def save_character():
+    """Save the AI's character and conversation history.  Returns nothing."""
+    st.session_state['pickled_agent'] = agent.save_agent()
+
+def load_character(file):
+    """Load the AI's character and conversation history.  Returns nothing."""
+    agent.load_agent(file)
+    st.session_state['character_description'] = agent.character
+
+# get the agent
+agent = get_agent(session_id)
+
+if 'pickled_agent' not in st.session_state:
+    st.session_state['pickled_agent'] = None
+
+
 # Set the title
 st.title('Chat with a Character!')
 
@@ -55,35 +73,54 @@ temperature = st.sidebar.slider('Creativity', min_value=0.0, max_value=1.0, step
 st.sidebar.button('New conversation', on_click=clear_history,
                    use_container_width=False)
 
-# get the agent
-agent = get_agent(session_id)
+# add a button to save the character and conversation
+st.sidebar.button('Save Conversation', on_click=save_character)
+
+# add a button to download the character and conversation
+if st.session_state['pickled_agent']:
+    st.sidebar.download_button(
+        label='Download Character and Conversation',
+        data=st.session_state['pickled_agent'],
+        file_name="saved_character.pkl",
+        mime="application/octet-stream")
+
+# add a button to upload a character and conversation
+with st.sidebar.form('upload_character', clear_on_submit=True):
+    uploaded_file = st.file_uploader(":floppy_disk: **Upload a saved conversation**", 
+                                     type=['pkl'], accept_multiple_files=False,)
+    
+    submit_button = st.form_submit_button('Upload')
+    if submit_button:
+        if uploaded_file is not None:
+            pkl = uploaded_file.getvalue()
+            load_character(pkl)
+            st.rerun()
 
 # set the character with a text input and button
-character = st.text_area('Character Description', value='A friendly old man',
-                          max_chars=500, help='Describe the character',)
-character_set = st.button('Change Character')
-if character_set and character:
-    set_character(character)
+character = st.text_area('Set Character Description', value=agent.character,
+                        max_chars=500, help='Describe the character', key='character')
+st.button('Set Character', on_click=set_character, args=[character])
 
-# add a text input and button for the user's message
-prompt = st.text_area(label="Your message here",
-                       max_chars=500,
-                       value='',
-                       help="Write your message here",
-                       key='user_query',
-                       placeholder="Write your message here")
-queried = st.button('Submit your message')
+# Create chat input
+with st.expander("Input Messages",expanded=True):
+    if prompt := st.chat_input("Your message here", max_chars=500):
+        with st.spinner("Thinking..."):
+            query_agent(prompt, 
+                        temperature=temperature
+                        )
+            
+# display the conversation history
+with st.container(height=500):
+    for message in reversed(agent.chat_history):
+        with st.chat_message(message['role']):
+            if message['role'] == 'user':
+                st.markdown(message['content'].replace(agent.prefix, ''))
+            else:
+                st.markdown(message['content'])
 
-# if the user has created a prompt and pressed the query button, then query the AI
-chat_container = st.container(border=True)
-if queried and prompt:
-    with chat_container:
-        st.chat_message("User").write(prompt)
-        query_agent(prompt, 
-                    temperature=temperature
-                    )
-        st.chat_message("Character").markdown(agent.response)
-
-# display the conversation history on the sidebar
-st.sidebar.markdown(f'The conversation so far: {format_history(agent.chat_history)}')
-st.write(f'total current memory tokens {agent.current_memory_tokens}')
+# write descriptive statistics on the sidebar
+st.sidebar.write(f'Total current memory tokens: {agent.current_memory_tokens}')
+st.sidebar.write(f'Total cost of this conversation is: {agent.total_cost}')
+st.sidebar.write(f'Total tokens sent is: {agent.total_tokens}')
+st.sidebar.write(f'Average number of tokens per message is: {agent.average_tokens}')
+st.sidebar.write(f'Average cost per message is: {agent.average_cost}')
