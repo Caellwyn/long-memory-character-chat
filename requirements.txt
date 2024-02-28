@@ -1,4 +1,4 @@
-streamlit
+pip
 openai
 langchain_openai
 langchain_community
