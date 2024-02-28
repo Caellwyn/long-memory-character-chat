@@ -18,16 +18,6 @@ def get_agent(session_id):
     return agent
 
 
-def format_history(history):
-    """Format the conversation history for display.  Returns a string."""
-    report = ''
-    for message in reversed(history[:]):
-        if message['role'] == 'user':
-            report += (f"\n\nYOU: {message['content'].replace(agent.prefix, '')}")
-        else:
-            report += (f"\n\nCHARACTER: {message['content']}")
-    return report
- 
 def query_agent(prompt, temperature=0.1):
     """Query the AI agent.  Returns a string."""
     try:      
@@ -59,6 +49,7 @@ def load_character(file):
 # get the agent
 agent = get_agent(session_id)
 
+# if there is no pickled agent in the session state, set it to None
 if 'pickled_agent' not in st.session_state:
     st.session_state['pickled_agent'] = None
 
