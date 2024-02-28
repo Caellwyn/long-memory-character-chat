@@ -62,7 +62,6 @@ agent = get_agent(session_id)
 if 'pickled_agent' not in st.session_state:
     st.session_state['pickled_agent'] = None
 
-
 # Set the title
 st.title('Chat with a Character!')
 
@@ -73,6 +72,7 @@ st.button('New conversation', on_click=clear_history,
 # set the temperature for the model
 temperature = st.slider('Creativity', min_value=0.0, max_value=1.0, step=0.1, value=0.1)
 
+# add a sidebar with instructions for saving and loading conversations
 st.sidebar.markdown('''### Saving and Loading Conversations.  
                     \n To save a conversation at the current message, press `Save Conversation`.  This saves both the current character and the conversation.
                     \n To load a conversation, press `Load Conversation` 
@@ -83,9 +83,12 @@ st.sidebar.markdown('''### Saving and Loading Conversations.
 # add a button to save the character and conversation
 st.sidebar.button('Save Conversation', on_click=save_character)    
 
-# add a button to download the character and conversation
+# if there is a saved conversation, add buttons to reload and download the character and conversation
 if st.session_state['pickled_agent']:
-    st.sidebar.button('Load Conversation', on_click=load_character, args=[st.session_state['pickled_agent']])
+    # add a button to reload the character and conversation
+    st.sidebar.button('Reload Conversation', on_click=load_character, args=[st.session_state['pickled_agent']])
+
+    # add a button to download the character and conversation
     st.sidebar.download_button(
         label='Download Conversation',
         data=st.session_state['pickled_agent'],
@@ -106,7 +109,7 @@ with st.sidebar.form('upload_character', clear_on_submit=True):
 
 # set the character with a text input and button
 character = st.text_area('Set Character Description', value=agent.character,
-                        max_chars=500, help='Describe the character', key='character')
+                        max_chars=500, help='Describe the character', key='character', height=100)
 st.button('Set Character', on_click=set_character, args=[character])
 
 # Create chat input
@@ -132,3 +135,4 @@ st.sidebar.write(f'Total cost of this conversation is: {agent.total_cost}')
 st.sidebar.write(f'Total tokens sent is: {agent.total_tokens}')
 st.sidebar.write(f'Average number of tokens per message is: {agent.average_tokens}')
 st.sidebar.write(f'Average cost per message is: {agent.average_cost}')
+st.sidebar.write(f'Total number of messages to and from the character: {len(agent.chat_history)}')
