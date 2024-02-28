@@ -56,6 +56,15 @@ if 'pickled_agent' not in st.session_state:
 # Set the title
 st.title('Chat with a Character!')
 
+# Disclaimer
+st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.  
+         The character uses the GPT-3.5-turbo model to generate responses.
+         All responses are meant for entertainment only.  The character is not a real person and does not have real emotions or thoughts.  
+         The character is not a substitute for professional advice.  Please do not share personal information with the character.  
+         The character and developer are not responsible for any actions you take based on its responses.  
+         Responses should not be considered factual in any way. 
+         Please use this app responsibly.  Enjoy!''')
+
 # add a button to clear the conversation history
 st.button('New conversation', on_click=clear_history,
                    use_container_width=False)
@@ -102,6 +111,7 @@ with st.sidebar.form('upload_character', clear_on_submit=True):
 character = st.text_area('Set Character Description', value=agent.character,
                         max_chars=500, help='Describe the character', key='character', height=100)
 st.button('Set Character', on_click=set_character, args=[character])
+st.write('The character creator is currently a little wonky.  You may need to press the button a few times to get the character to update.  It also may not appear to update when you upload a previous conversion, but you should have your saved character back, even if it doesn\'t look like it here. Sorry for the inconvenience.  I am working on it!')
 
 # Create chat input
 with st.expander("Input Messages",expanded=True):
