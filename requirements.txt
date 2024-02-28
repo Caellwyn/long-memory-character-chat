@@ -1,4 +1,4 @@
-pip
+pip >= 24.0
 openai
 langchain_openai
 langchain_community
