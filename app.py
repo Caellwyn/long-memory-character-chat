@@ -57,12 +57,13 @@ if 'pickled_agent' not in st.session_state:
 st.title('Chat with a Character!')
 
 # Disclaimer
-st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.  
+st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.
+         This character will have a very long memory, and should remember the conversation even after many messages.  It's not perfect, but better than most!
          The character uses the GPT-3.5-turbo model to generate responses.
-         All responses are meant for entertainment only.  The character is not a real person and does not have real emotions or thoughts.  
-         The character is not a substitute for professional advice.  Please do not share personal information with the character.  
-         The character and developer are not responsible for any actions you take based on its responses.  
-         Responses should not be considered factual in any way. 
+         \nAll responses are meant for entertainment only.  The character is not a real person and does not have real emotions or thoughts.
+         The character is not a substitute for professional advice.  Please do not share personal information with the character.
+         The character and developer are not responsible for any actions you take based on its responses.
+         Responses should not be considered factual in any way.
          Please use this app responsibly.  Enjoy!''')
 
 # add a button to clear the conversation history
