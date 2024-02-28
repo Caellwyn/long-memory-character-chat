@@ -11,6 +11,11 @@ I hope to use a conversation summary integrated into the system prompt as a medi
 1. How can the model keep track of the order of past events in long term memory?  ex. Did we raid the tower before or after killing the dragon?
    * timestamps included in summary?
    * message ids for sequence?
-3. Should the medium term memory be 'rolling' in that the previous medium term memory summary should be included in the prompt to create the next one?  This would result in a decay of specificity of the medium term memory as the token limit for the summary is reached, but would also extend the historical length of the medium term memory.
+2. Should the medium term memory be 'rolling' in that the previous medium term memory summary should be included in the prompt to create the next one?  This would result in a decay of specificity of the medium term memory as the token limit for the summary is reached, but would also extend the historical length of the medium term memory.
    * pros: longer term medium term memory
    * cons: reduction in specificity of medium term memory
+3. How to 'chunk' conversations so that summaries don't miss important information between chunks.
+   * Currently chunks every 5 total completions
+   * Could use overlapping chunks, but this would add more summary calls to the model, increasing cost
+   * Could as LLM to identify topic shifts, but this would make the length of the short term memory less predictable.  Would implement through JSON agent responses.
+   * Could implement above 'rolling memory', this would be a version of the overlapping chunks implementation.
