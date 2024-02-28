@@ -1,6 +1,8 @@
 # long-memory-character-chat
  A character chat with integrated medium and long-term memory
 
+ [Check it out here!](https://long-memory-character-chat.streamlit.app/)
+
 # Problem Statement
 Character based chats are great and engrossing, but they have short memories.  They often lose track of the setting, situation, and important prior events.  While using longer context windows can help this, tokens are expensive!  How can we give a character a long memory, but limit the number of tokens sent for each completion?
 
