@@ -66,20 +66,28 @@ if 'pickled_agent' not in st.session_state:
 # Set the title
 st.title('Chat with a Character!')
 
-# set the temperature for the model
-temperature = st.sidebar.slider('Creativity', min_value=0.0, max_value=1.0, step=0.1, value=0.1)
-
 # add a button to clear the conversation history
-st.sidebar.button('New conversation', on_click=clear_history,
+st.button('New conversation', on_click=clear_history,
                    use_container_width=False)
 
+# set the temperature for the model
+temperature = st.slider('Creativity', min_value=0.0, max_value=1.0, step=0.1, value=0.1)
+
+st.sidebar.markdown('''### Saving and Loading Conversations.  
+                    \n To save a conversation at the current message, press `Save Conversation`.  This saves both the current character and the conversation.
+                    \n To load a conversation, press `Load Conversation` 
+                    \n You can only have one conversation saved at a time. And it will be lost if this page is refreshed, unless you download the conversation file.
+                    \n In order to save conversations between sessions, you can download the conversation with the `Download Conversation` buttion which only appears after saving.
+                    \n You can upload previous conversations at any time, even after refreshing the page by dropping the downloaded .pkl file in the `Upload a saved conversation` box and pressing `Upload`.''')
+
 # add a button to save the character and conversation
-st.sidebar.button('Save Conversation', on_click=save_character)
+st.sidebar.button('Save Conversation', on_click=save_character)    
 
 # add a button to download the character and conversation
 if st.session_state['pickled_agent']:
+    st.sidebar.button('Load Conversation', on_click=load_character, args=[st.session_state['pickled_agent']])
     st.sidebar.download_button(
-        label='Download Character and Conversation',
+        label='Download Conversation',
         data=st.session_state['pickled_agent'],
         file_name="saved_character.pkl",
         mime="application/octet-stream")
