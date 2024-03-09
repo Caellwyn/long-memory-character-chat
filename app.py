@@ -60,11 +60,14 @@ st.title('Chat with a Character!')
 # Disclaimer
 st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.
          This character will have a very long memory, and should remember the conversation even after many messages.  It's not perfect, but better than most!
-         The character the language model selected below to generate responses.
+         You can set the temperature and top_p through 'creativity' and 'freedom' respectively.  You can also choose from one of 3 models.  These can be changed on the fly.
          \nAll responses are meant for entertainment only.  The character is not a real person and does not have real emotions or thoughts.
          The character is not a substitute for professional advice.  Please do not share personal information with the character.
          The character and developer are not responsible for any actions you take based on its responses.
          Responses should not be considered factual in any way.
+         \n The responses are not filtered in any way and may include NSFW or otherwise offensive content.  
+         Please be aware that the character may say things that are not appropriate for all audiences.  
+         If you are under 18, please navigate away from this page.
          Please use this app responsibly.  Enjoy!''')
 
 
