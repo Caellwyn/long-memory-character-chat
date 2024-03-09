@@ -1,5 +1,7 @@
 pip >= 24.0
 openai
 langchain_openai
+langchain_mistralai
 langchain_community
 faiss-cpu
+mistralai

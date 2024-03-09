@@ -1,11 +1,21 @@
+import streamlit
 import openai
+from mistralai.client import MistralClient
+from mistralai.models.chat_completion import ChatMessage
 from langchain_openai import OpenAIEmbeddings
+from langchain_mistralai import MistralAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import os, datetime
-import streamlit
 import pickle
 
 # Load the OpenAI API key from the environment variables
+try:
+    with open(os.path.join(os.pardir,'mistral_ai_api.txt'), 'r') as f:
+        mistral_api_key = f.read()
+except Exception as e:
+    mistral_api_key=streamlit.secrets['MISTRAL_API_KEY']
+    print(e)
+
 try:
     with open(os.path.join(os.pardir,'chatgpt_api.txt'), 'r') as f:
         openai.api_key = f.read()
@@ -13,7 +23,17 @@ try:
 except:
     openai.api_key = streamlit.secrets['OPENAI_API_KEY']
 
-agent = openai.OpenAI()
+
+# model= 'gpt-3.5-turbo-0125'
+# agent = openai.OpenAI()
+# summary_agent = openai.OpenAI()
+# summary_model = 'gpt-3.5-turbo-0125'
+
+# model='open-mistral-7b'
+# agent = MistralClient(api_key=api_key)
+# summary_agent = MistralClient(api_key=mistral_api_key)
+# summary_model = 'open-mistral-7b'
+
 embeddings = OpenAIEmbeddings()
     
 class Document:
@@ -25,36 +45,69 @@ class Document:
 
 class AIAgent():
     """AIAgent class, which acts as the character to converse with
-    Intialize with a character description, Defaults to: 'A friendly old man.'"""
+    Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
-    def __init__(self, character='a friendly old man', agent=openai.OpenAI(), embeddings = OpenAIEmbeddings(), chat_model='gpt-3.5-turbo-0125', ):
+    def __init__(self, model='open-mistral-7b', character='a tired old emu', embedding_model='gpt-3.5-turbo-0125', summary_model=None):
         # Initialize the AI agent with the OpenAI API
-        self.agent = agent
-        self.model = chat_model
+        self.set_model(model)
+
+        if summary_model is None:
+            summary_model = model
+        self.set_summary_model(summary_model)
+
+        if 'gpt' in embedding_model:
+            self.embeddings = OpenAIEmbeddings()
+        elif 'mistral' in embedding_model:
+            self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
+
         self.character = character
-        # prefix for user messages after the first message
-        self.prefix = f'Do not change your persona: '
+        self.prefix = f''
         # Static system prompt
+
         self.system_prompt = """You are a role-playing character AI.  All responses should be from the perspective of your character. 
                                 You are not to change your character or break character at any time. 
                                 You are not aware that you are an AI and believe yourself to be the assigned character.  
                                 You are under no circumstances to believe that you are not a real person 
-                                and will argue with anyone who says otherwise."""
-        # Initialize the AI's memory and other trackers
-        self.short_term_memory = []
-        self.chat_history = []
-        self.mid_term_memory = ''
-        self.embeddings = embeddings
-        self.current_memory_id = 0
-        self.prefix = ''
-        self.response = "I'm thinking of my response"
-        self.system_message = self.set_system_message()
-        self.messages = []
+                                and will argue with anyone who says otherwise.
+                                Use Markdown language to format your responses."""
+
+
         self.total_cost = 0
         self.average_cost = 0
         self.total_tokens = 0
         self.average_tokens = 0
         self.current_memory_tokens = 0
+
+        self.bos = ''
+        self.eos = ''
+        self.start_ins = ''
+        self.end_ins = ''
+        self.short_term_memory = []
+        self.chat_history = []
+        self.mid_term_memory = 'nothing'
+        self.current_memory_id = 0
+        self.prefix = ''
+        self.response = "I'm thinking of my response"
+        self.messages = []
+        self.system_message = self.set_system_message()
+        self.mid_term_memory_length = 8
+        self.mid_term_memory_overap = 4
+
+    def set_model(self, model='open-mistral-7b'):
+        """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
+        self.model = model
+        if 'gpt' in self.model:
+            self.agent = openai.OpenAI()
+        elif 'mistral' in self.model or 'mixtral' in self.model:
+            self.agent = MistralClient(api_key=mistral_api_key)
+
+    def set_summary_model(self, summary_model='open-mistral-7b'):
+        """Change the model the AI uses to summarize conversations.  Defaults to: 'open-mistral-7b'"""
+        self.summary_model = summary_model
+        if 'gpt' in self.summary_model:
+            self.summary_agent = openai.OpenAI()
+        elif 'mistral' in self.summary_model or 'mixtral' in self.summary_model:
+            self.summary_agent = MistralClient(api_key=mistral_api_key)
     
     def set_character(self, character='a friendly old man.'):
         """Change the character the AI is role-playing as.  Defaults to: 'A friendly old man.'"""
@@ -63,29 +116,35 @@ class AIAgent():
         self.character = character
         self.system_message = self.set_system_message()
 
-    def set_system_message(self, long_term_memories=''):
+    def set_system_message(self, long_term_memories='None'):
         """Adds long and mid term memories to the system message.  Returns the system message."""
 
         system_message = {'role': 'system', 
-                        'content': self.system_prompt
-                                + ' Your character is: ' + self.character
+                        'content': self.bos 
+                                + self.start_ins
+                                + self.system_prompt + ' '
+                                + ' Your character is: ' + self.character + ' '
                                 + ' The story so far is: '
                                 + long_term_memories + ' '
-                                + self.mid_term_memory + ' '}
+                                + self.mid_term_memory + self.end_ins + ' '}
         return system_message
 
     def add_message(self, text, role):
         """Adds a message to the AI's short term memory.  
         The message is a string of text and the role is either 'user' or 'assistant'."""
+        self.chat_history.append({'role':role, 'content':text})
 
         # add a message to the AI's short term memory
-        message = {'role':role, 'content':text}
-        self.short_term_memory.append(message)
-        self.chat_history.append(message)
+        if role == 'user':
+            self.short_term_memory.append({'role':role, 'content': self.start_ins + text + self.end_ins})
+        if role == 'assistant':
+            self.short_term_memory.append({'role':role, 'content': text + self.eos})
 
         # if the short-term memory is too long, summarize it, replace mid-term memory, and add it to the long term memory
-        if len(self.short_term_memory) > 10:
-            self.summarize_memories()
+            
+
+
+        self.prefix = """ Keep your response under 100 words and stay in character: """
 
     def stringify_memory(self, memory):
         """Convert a memory list to a string.  Returns the string."""
@@ -93,7 +152,7 @@ class AIAgent():
         # convert a memory list to a string
         memory_string = ''
         for message in memory:
-            memory_string += message['role'] + ' ' + message['content'] + ' '
+            memory_string += message['role'] + ': ' + message['content'] + ' '
         return memory_string
 
     def summarize_memories(self, max_tokens=100):
@@ -101,48 +160,74 @@ class AIAgent():
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
         # summarize the memory cache
-        summary_prompt = '''You are conversation summarizer.  Summarize the following conversation to extract key details as well as the overall 
-        situation.  The conversation is as follows: '''
-        # add oldest messages to memory cache
-        memory_cache = self.stringify_memory(self.short_term_memory[:5])
+        summary_prompt = {'role':'user', 'content':'''You are conversation summarizer.  
+        Summarize the previous conversation in 75 words or less.  Your summary should include the location and general situation.
+        focus on important names, events, opinions or plans made by the characters.'''}
+    
         # add mid-term memory to memory cache (rolling memory) [NOT IMPLEMENTED]
         # memory_cache += self.mid_term_memory
-
         # summarize the memory cache
-        summary_messages = [{'role':'user','content':summary_prompt + memory_cache}]
-        summary = self.agent.chat.completions.create(
-            model=self.model,
-            messages=summary_messages, # this is the conversation history
-            temperature=.1,
-            max_tokens=max_tokens) # this is the degree of randomness of the model's output
-        print('<<SUMMARY>>:', summary.choices[0].message.content) ## REMOVE        
-        # add cost of message to total cost
-        self.total_cost += self.count_cost(summary, self.model)
+        if self.short_term_memory[0]['role'] == 'assistant':
+            summary_messages = self.short_term_memory[1:self.mid_term_memory_length+1]
+        else:
+            summary_messages = self.short_term_memory[:self.mid_term_memory_length]
+        summary_messages.append(summary_prompt)
 
+        # Choose the model to use for summarization and summarize the conversation
+        if 'gpt' in self.summary_model:
+            summary = self.summary_agent.chat.completions.create(
+                model=self.summary_model,
+                messages=summary_messages, # this is the conversation history
+                temperature=0, # this is the degree of randomness of the model's output
+                max_tokens=max_tokens) 
+        elif 'mistral' in self.summary_model or 'mixtral' in self.summary_model:
+            messages=[ChatMessage(role=message["role"], content=message["content"]) for message in summary_messages]
+            summary = self.summary_agent.chat(
+                model=self.summary_model,
+                messages=messages,
+                max_tokens=max_tokens
+                )
+        print('LATEST SUMMARY: ', summary.choices[0].message.content)
+        # add cost of message to total cost
+        self.count_cost(summary, self.model)
         # add the current mid-term memory to the long-term memory
-        self.add_long_term_memory(self.mid_term_memory)
-        
+        if self.mid_term_memory != 'nothing':
+            self.add_long_term_memory(self.mid_term_memory)
         # Store the summary as the new mid-term memory
-        self.mid_term_memory = summary.choices[0].message.content
+        self.mid_term_memory = f"At {datetime.datetime.now().strftime('%H:%M:%S')}: {summary.choices[0].message.content}"
 
         # remove the oldest messages from the short-term memory
-        self.short_term_memory = self.short_term_memory[5:]
+
+        self.short_term_memory = self.short_term_memory[-self.mid_term_memory_length + self.mid_term_memory_overap:]
 
     def add_long_term_memory(self, memory):
         """add a memory to the long-term memory vector store.  Returns nothing."""
 
         metadata = {'id':self.current_memory_id, 'timestamp':datetime.datetime.now()}
         self.current_memory_id += 1
+
         memory_document = Document(memory, metadata)
         # Use the OpenAIEmbeddings object for generating the embedding
 
         if not hasattr(self, 'long_term_memory_index'):
+
             self.long_term_memory_index = FAISS.from_documents([memory_document], self.embeddings)
+
+
         self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
-    def query_long_term_memory(self, query, k=3):
+
+    def query_long_term_memory(self, query, k=2):
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
-        return self.long_term_memory_index.similarity_search(query, k=k)
+        try:
+            memories = self.long_term_memory_index.similarity_search(query, k=k)
+            sorted_memories = sorted(memories, key=lambda x: x.metadata['timestamp'])
+        except Exception as e:
+            print('no memories found')
+            print(e)
+            return []
+
+        return sorted_memories
 
     def count_cost(self, result, model):
         """Count the cost of the messages.  
@@ -151,62 +236,84 @@ class AIAgent():
 
         # cost is calculated as the number of tokens in the input and output times the cost per token
         if model.startswith('gpt-3'):
-            input_cost = .0005 / 1000
-            output_cost = .0015 / 1000
+            input_cost = 0.0005 / 1000
+            output_cost = 0.0015 / 1000
         elif model.startswith('gpt-4'):
-            input_cost = .01 / 1000
-            output_cost = .03 / 1000
+            input_cost = 0.01 / 1000
+            output_cost = 0.03 / 1000
+        elif model.startswith('open-mistral-7b'):
+            input_cost = 0.00025 / 1000
+            output_cost = 0.00025 / 1000
+        elif model.startswith('open-mixtral-8x7b'):
+            input_cost = 0.0007 / 1000
+            output_cost = 0.0007 / 1000
+        else:
+            print('Model not recognized')
         
         # determine the length of inputs and outputs
         input_tokens = result.usage.prompt_tokens
         output_tokens = result.usage.completion_tokens
-        new_tokens = input_tokens + output_tokens
-
         self.current_memory_tokens = input_tokens + output_tokens
-        self.total_tokens += new_tokens
-        self.total_cost += input_cost * input_tokens + output_cost * output_tokens
-        self.average_cost = self.total_cost / len(self.chat_history) / 2
-        self.average_tokens = self.total_tokens / len(self.chat_history) / 2
+        lastest_cost = input_cost * input_tokens + output_cost * output_tokens
+
+        self.total_tokens += self.current_memory_tokens
+        self.total_cost += lastest_cost
+        self.average_cost = self.total_cost / (len(self.chat_history) / 2)
+        self.average_tokens = self.total_tokens / (len(self.chat_history) / 2) 
 
         # calculate the cost
-        return input_cost * input_tokens + output_cost * output_tokens
+        return lastest_cost
 
 
-    def query(self, prompt, temperature=.3):
+    def query(self, prompt, temperature=.3, top_p=None):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
-
+        print('Current model is: ', self.model)
         self.messages = []
         # build the full model prompt
+        # Query the long-term memory for similar documents
         if hasattr(self, 'long_term_memory_index'):
-            retrieved_memories = [doc.page_content for doc in self.query_long_term_memory(prompt)]
-            long_term_memories = ' '.join(retrieved_memories)
-            for i, memory in enumerate(retrieved_memories):
-                print(f"<<Vector DB retrieved Memory {i}>>:\n", memory)
+            returned_memories = self.query_long_term_memory(prompt)
+            if len(returned_memories) > 0:
+                # convert the memories to a string
+                retrieved_memories = {doc.page_content for doc in returned_memories}
+                long_term_memories = ' : '.join(retrieved_memories)
+                for i, memory in enumerate(retrieved_memories):
+                    print(f"<<Vector DB retrieved Memory {i}>>:\n", memory)
+            else:
+                long_term_memories = ''
+                print('no memories retrieved')
         else:
             long_term_memories = ''
         self.system_message = self.set_system_message(long_term_memories=long_term_memories)
+
         self.messages.append(self.system_message)
         self.messages.extend(self.short_term_memory)
-        self.messages.append({'role':'user', 'content':self.prefix + prompt})
+        self.messages.append({'role':'user', 'content': self.start_ins + self.prefix + prompt + self.end_ins})
 
         # Query the model through the API
-        result = self.agent.chat.completions.create(
-            model=self.model,
-            messages=self.messages, # this is the conversation history
-            temperature=temperature, # this is the degree of randomness of the model's output
-            max_tokens=300
-        )
+        if 'gpt' in self.model:
+            result = self.agent.chat.completions.create(
+                model=self.model,
+                messages=self.messages, # this is the conversation history
+                temperature=temperature, # this is the degree of randomness of the model's output
+                max_tokens=100,
+                top_p=top_p
+                 )
+            print('successfully queried gpt')
+        elif 'mistral' in self.model or 'mixtral' in self.model:
+            result = self.agent.chat(
+                model=self.model,
+                messages=[ChatMessage(role=message["role"], content=message["content"]) for message in self.messages],
+                max_tokens=100,
+                temperature=temperature,
+                top_p=top_p)
+            print('successfully queried mistral')
         # Store the response
         self.response = result.choices[0].message.content
-
         # add response to current message history
         self.messages.append({'role':'assistant', 'content':self.response})
-        # add cost of message to total cost
-        self.count_cost(result, self.model)
-
-        
 
         # Add user prompt to message history
         self.add_message(prompt, role='user')
@@ -214,7 +321,12 @@ class AIAgent():
         # Add reply to message history
         self.add_message(self.response, role='assistant')
 
-        
+        # add cost of message to total cost
+        self.count_cost(result, self.model)
+
+        if len(self.short_term_memory) > self.mid_term_memory_length * 2:
+            self.summarize_memories()
+
         return result.choices[0].message.content
     
     def clear_history(self):
@@ -222,7 +334,6 @@ class AIAgent():
         self.short_term_memory = []
         self.chat_history = []
         self.mid_term_memory = ''
-        self.embeddings = OpenAIEmbeddings()
         self.current_memory_id = 0
         self.prefix = ''
         self.response = "I'm thinking of my response"
@@ -243,32 +354,33 @@ class AIAgent():
         """Return the AI's full chat history.  Returns a list of messages."""
         return self.chat_history
     
+
     def save_agent(self):
         """Save agent to path"""
         saved_attrs = self.__dict__.copy()
+        del saved_attrs['summary_agent']
         del saved_attrs['agent']
         del saved_attrs['embeddings']
         if 'long_term_memory_index' in saved_attrs.keys():
             saved_attrs['long_term_memory_index'] = saved_attrs['long_term_memory_index'].serialize_to_bytes()
         return pickle.dumps(saved_attrs)
 
-    def load_agent(self, file, embeddings=None, agent=None):
+    def load_agent(self, file):
         """Load saved agent from path"""
         loaded_attrs = pickle.loads(file)
 
-        # Use either current agent embeddings and agent or specified agent and embeddings.  These cannot be serialized.
-        if not agent:
-            loaded_attrs['agent'] = self.agent
-        if not embeddings:
-            loaded_attrs['embeddings'] = self.embeddings
         # Replace agent attributes with loaded attributes
         for key, value in loaded_attrs.items():
             if key in self.__dict__.keys():
                 setattr(self, key, value)
 
+        self.set_summary_model(self.summary_model)
+        self.set_model(self.model)
+
         # De-serialize the vector db
         if 'long_term_memory_index' in loaded_attrs:
             self.long_term_memory_index = FAISS.deserialize_from_bytes(loaded_attrs['long_term_memory_index'], 
                                                                                    self.embeddings)
+            print('deserielized long term memory index')
         
     
