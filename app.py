@@ -17,7 +17,7 @@ try:
 
 except Exception as e:
     print(e)
-    nsfw_password = st.secrets['nsfw_password']
+    nsfw_password = st.secrets['NSFW_PASSWORD']
 
 @st.cache_resource
 def get_agent(session_id, model='open-mistral-7b', ):
