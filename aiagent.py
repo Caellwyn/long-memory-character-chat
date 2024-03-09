@@ -161,19 +161,12 @@ class AIAgent():
         input_tokens = result.usage.prompt_tokens
         output_tokens = result.usage.completion_tokens
         new_tokens = input_tokens + output_tokens
-        self.total_tokens += new_tokens
-
-        if self.average_tokens > 0:
-            self.average_tokens = (self.average_tokens + new_tokens) / 2
-        else:
-            self.average_tokens = new_tokens
 
         self.current_memory_tokens = input_tokens + output_tokens
+        self.total_tokens += new_tokens
         self.total_cost += input_cost * input_tokens + output_cost * output_tokens
-        if self.average_cost > 0:
-            self.average_cost = (self.average_cost + input_cost * input_tokens + output_cost * output_tokens) / 2
-        else:
-            self.average_cost = input_cost * input_tokens + output_cost * output_tokens
+        self.average_cost = self.total_cost / len(self.chat_history) / 2
+        self.average_tokens = self.total_tokens / len(self.chat_history) / 2
 
         # calculate the cost
         return input_cost * input_tokens + output_cost * output_tokens
