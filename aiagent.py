@@ -48,22 +48,24 @@ class AIAgent():
     Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
     def __init__(self, model='open-mistral-7b', character='a tired old emu', embedding_model='gpt-3.5-turbo-0125', summary_model=None):
-        # Initialize the AI agent with the OpenAI API
+        # Initialize the AI agent
         self.set_model(model)
 
+        # initialize the summary model
         if summary_model is None:
             summary_model = model
         self.set_summary_model(summary_model)
 
+        # Initialize the embeddings model
         if 'gpt' in embedding_model:
             self.embeddings = OpenAIEmbeddings()
         elif 'mistral' in embedding_model:
             self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
 
+        # Set the character for the AI to role-play as
         self.character = character
         self.prefix = f''
         # Static system prompt
-
         self.system_prompt = """You are a role-playing character AI.  All responses should be from the perspective of your character. 
                                 You are not to change your character or break character at any time. 
                                 You are not aware that you are an AI and believe yourself to be the assigned character.  
@@ -71,27 +73,33 @@ class AIAgent():
                                 and will argue with anyone who says otherwise.
                                 Use Markdown language to format your responses."""
 
-
+        # token and usage statistics
         self.total_cost = 0
         self.average_cost = 0
         self.total_tokens = 0
         self.average_tokens = 0
         self.current_memory_tokens = 0
 
+        # string and instruction tokens (not currently used)
         self.bos = ''
         self.eos = ''
         self.start_ins = ''
         self.end_ins = ''
+
+        # initialize the memory
         self.short_term_memory = []
         self.chat_history = []
         self.mid_term_memory = 'nothing'
         self.current_memory_id = 0
-        self.prefix = ''
-        self.response = "I'm thinking of my response"
         self.messages = []
         self.system_message = self.set_system_message()
+
+        # Set the short term memory length and overlap
         self.mid_term_memory_length = 8
         self.mid_term_memory_overap = 4
+
+        # NSFW filter
+        self.nsfw = False
 
     def set_model(self, model='open-mistral-7b'):
         """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
@@ -159,19 +167,19 @@ class AIAgent():
         """Summarize the short-term memory and add it to the mid-term memory.  
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
-        # summarize the memory cache
-        summary_prompt = {'role':'user', 'content':'''You are conversation summarizer.  
-        Summarize the previous conversation in 75 words or less.  Your summary should include the location and general situation.
-        focus on important names, events, opinions or plans made by the characters.'''}
+        # Summary system message
+        summary_messages = [{'role':'system', 'content':'''You are conversation summarizer.  
+        Summarize the following conversation in 75 words or less.  Your summary should include the location and general situation.
+        focus on important names, events, opinions or plans made by the characters.'''}]
     
         # add mid-term memory to memory cache (rolling memory) [NOT IMPLEMENTED]
         # memory_cache += self.mid_term_memory
-        # summarize the memory cache
-        if self.short_term_memory[0]['role'] == 'assistant':
-            summary_messages = self.short_term_memory[1:self.mid_term_memory_length+1]
+        
+        # Add the short-term memory to the summary
+        if self.short_term_memory[0]['role'] == 'assistant' or self.short_term_memory[0]['role'] == 'system':
+            summary_messages.extend(self.short_term_memory[1:self.mid_term_memory_length+1])
         else:
-            summary_messages = self.short_term_memory[:self.mid_term_memory_length]
-        summary_messages.append(summary_prompt)
+            summary_messages.extend(self.short_term_memory[:self.mid_term_memory_length])
 
         # Choose the model to use for summarization and summarize the conversation
         if 'gpt' in self.summary_model:
@@ -308,10 +316,25 @@ class AIAgent():
                 messages=[ChatMessage(role=message["role"], content=message["content"]) for message in self.messages],
                 max_tokens=100,
                 temperature=temperature,
-                top_p=top_p)
+                top_p=top_p,
+                safe_prompt=not self.nsfw)
             print('successfully queried mistral')
-        # Store the response
-        self.response = result.choices[0].message.content
+
+        # Check For NSFW Content
+        if not self.nsfw:
+            moderation = openai.OpenAI().moderations.create(
+                input=result.choices[0].message.content)
+            flagged = moderation.results[0].flagged
+            if flagged:
+                self.response = "I'm sorry, this response has been flagged as NSFW.  I cannot respond to this prompt."
+                print('NSFW content detected')
+            else:
+                self.response = result.choices[0].message.content
+                print('No NSFW content detected')
+        else:
+            # Store the response
+            self.response = result.choices[0].message.content
+
         # add response to current message history
         self.messages.append({'role':'assistant', 'content':self.response})
 
@@ -327,7 +350,7 @@ class AIAgent():
         if len(self.short_term_memory) > self.mid_term_memory_length * 2:
             self.summarize_memories()
 
-        return result.choices[0].message.content
+        return self.response
     
     def clear_history(self):
         """Clear the AI's memory.  Returns nothing."""

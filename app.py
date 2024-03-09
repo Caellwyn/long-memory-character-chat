@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit.web.server.websocket_headers import _get_websocket_headers
 from aiagent import AIAgent
+import os
 
 
 # get the websocket headers and session id
@@ -9,6 +10,14 @@ try:
     session_id = headers.get("Sec-Websocket-Key")
 except:
     session_id = 'default'
+
+try:
+    with open(os.path.join(os.pardir,'nsfw_filter_password.txt'), 'r') as f:
+        nsfw_password = f.read()
+
+except Exception as e:
+    print(e)
+    nsfw_password = st.secrets['nsfw_password']
 
 @st.cache_resource
 def get_agent(session_id, model='open-mistral-7b', ):
@@ -53,6 +62,10 @@ def change_model():
     else:
         st.session_state['agent'] = get_agent(session_id)
 
+def set_nsfw():
+    """Set the AI's NSFW mode.  Returns nothing."""
+    st.session_state['agent'].nsfw = st.session_state['nsfw']
+
 
 # Set the title
 st.title('Chat with a Character!')
@@ -86,11 +99,23 @@ with st.container(border=True):
             options=['open-mistral-7b', 'gpt-3.5-turbo-0125', 'open-mixtral-8x7b'],
             index=0,
             key='model_name', on_change=change_model)
+    
+    # set the NSFW mode
+    user_nsfw_password = st.text_input('Enter the NSFW password', value=None, type='password', key='nsfw_password')
+    if user_nsfw_password:
+
+        if user_nsfw_password == nsfw_password:
+            st.toggle('NSFW', value=False, key='nsfw', on_change=set_nsfw)
+        else:
+            st.session_state['nsfw'] = False
+            st.warning('The NSFW password is incorrect.  Please enter the correct password to enable NSFW mode.')
+    
 
 # get the agent
 if 'agent' not in st.session_state:
     st.session_state['agent'] = get_agent(session_id, model=st.session_state['model_name'])
 else:
+    # set the model
     change_model()
 
 # if there is no pickled agent in the session state, set it to None
