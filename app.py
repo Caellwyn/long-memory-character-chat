@@ -41,9 +41,21 @@ def clear_history():
     """Clear the AI's memory.  Returns nothing."""
     st.session_state['agent'].clear_history()
 
-def set_character(character):
+def set_character():
     """Set the AI's character.  Returns nothing."""
-    st.session_state['agent'].set_character(character)
+    st.session_state['agent'].set_character(st.session_state['character'])
+
+def set_location():
+    """Set the AI's location.  Returns nothing."""
+    st.session_state['agent'].set_location(st.session_state['location'])
+
+def set_user_name():
+    """Set the AI's user name.  Returns nothing."""
+    st.session_state['agent'].set_user_name(st.session_state['user_name'])
+
+def set_character_name():
+    """Set the AI's character name.  Returns nothing."""
+    st.session_state['agent'].set_character_name(st.session_state['character_name'])
 
 def save_character():
     """Save the AI's character and conversation history.  Returns nothing."""
@@ -52,7 +64,7 @@ def save_character():
 def load_character(file):
     """Load the AI's character and conversation history.  Returns nothing."""
     st.session_state['agent'].load_agent(file)
-    st.session_state['character_description'] = st.session_state['agent'].character
+    # st.session_state['character'] = st.session_state['agent'].character
 
 def change_model():
     """Change the AI's model.  Returns nothing."""
@@ -124,13 +136,34 @@ if 'pickled_agent' not in st.session_state:
 
 with st.container(border=True):
     st.markdown('#### Character Settings')
+    st.markdown('This can be changed at any time, and the character will remember the conversation.')
     # set the character with a text input and button
     character = st.text_area('The character is...', value=st.session_state['agent'].character,
-                            max_chars=500, help='Describe the character', key='character', height=100)
-    set_character(character)
+                            max_chars=500, help='Describe the character', key='character', height=100,
+                            on_change=set_character)
+    
+
+    col1, col2 = st.columns(2)
+    with col1:
+        # user name
+        st.text_input('Your Name', value=st.session_state['agent'].user_name, 
+                      max_chars=30, key='user_name', on_change=set_user_name)
+
+    with col2:
+        # character name
+        st.text_input('The Character\' Name', value=st.session_state['agent'].character_name, 
+                      max_chars=30, key='character_name', on_change=set_character_name)
+
     # add a button to clear the conversation history
     st.button('Reset conversation', on_click=clear_history,
                        use_container_width=False)
+    
+    # set location of the conversation.
+    st.markdown('#### Current Location')
+    st.markdown('This can be changed at any time, and the character will remember the conversation.')
+    location = st.text_input('The character is currently...', value=st.session_state['agent'].location,
+                            max_chars=50, help='Describe the location of the conversation', key='location',
+                            on_change=set_location)
 
 st.markdown('#### Chat with the Character')
 
@@ -163,7 +196,7 @@ if st.session_state['pickled_agent']:
 
     # add a button to download the character and conversation
     st.sidebar.download_button(
-        label='Download Conversation',
+        label='Download Last Saved Conversation',
         data=st.session_state['pickled_agent'],
         file_name="saved_character.pkl",
         mime="application/octet-stream")

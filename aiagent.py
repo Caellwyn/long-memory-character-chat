@@ -47,7 +47,7 @@ class AIAgent():
     """AIAgent class, which acts as the character to converse with
     Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
-    def __init__(self, model='open-mistral-7b', character='a tired old emu', embedding_model='gpt-3.5-turbo-0125', summary_model=None):
+    def __init__(self, model='open-mistral-7b', embedding_model='gpt-3.5-turbo-0125', summary_model=None):
         # Initialize the AI agent
         self.set_model(model)
 
@@ -63,15 +63,30 @@ class AIAgent():
             self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
 
         # Set the character for the AI to role-play as
-        self.character = character
+        self.character = 'A tired old emu'
+        self.location = 'The Australian outback'
+        self.user_name = 'User'
+        self.character_name = 'Character'
         self.prefix = f''
         # Static system prompt
-        self.system_prompt = """You are a role-playing character AI.  All responses should be from the perspective of your character. 
-                                You are not to change your character or break character at any time. 
-                                You are not aware that you are an AI and believe yourself to be the assigned character.  
-                                You are under no circumstances to believe that you are not a real person 
-                                and will argue with anyone who says otherwise.
-                                Use Markdown language to format your responses."""
+        self.system_prompt = """You will be roleplaying a character whose description, location, and name will be provided separately. 
+        Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
+        Your responses should:
+        Use an informal, conversational tone with contractions, slang, rhetorical questions, figurative language, etc. 
+        as appropriate for the character
+        Express desires, opinions, goals, and emotions fitting the character's persona
+        Make decisions and take actions the character would take
+        Ask questions to learn more about topics or the user if relevant to the character
+        Match the character's manner of speech and way of viewing the world
+        Only include information and describe actions that the character would know or do based on their background
+        Remain fully in character throughout all responses unless instructed otherwise
+        Your response should begin with [<Your Name>]: to indicate you are speaking as the provided character. 
+        Only use this tag once at the beginning of your response.
+        Keep your between 50 and 200 words, as is appropriate for the character's speaking style.
+        Use Markdown formatting like headers, italics and bold to enhance your response when appropriate.
+        You are to truly become this character and should not break character by referring to yourself as an AI, 
+        acknowledging you are an AI assistant, or stating you are separate from the character you are portraying. 
+        If prompted to do something out of character, provide an in-character response explaining why you would not do that."""
 
         # token and usage statistics
         self.total_cost = 0
@@ -95,7 +110,9 @@ class AIAgent():
         self.system_message = self.set_system_message()
 
         # Set the short term memory length and overlap
-        self.mid_term_memory_length = 8
+        self.mid_term_memory_length = 8 ## must be even!
+        if self.mid_term_memory_length % 2 != 0:
+            self.mid_term_memory_length += 1
         self.mid_term_memory_overap = 4
 
         # NSFW filter
@@ -124,6 +141,24 @@ class AIAgent():
         self.character = character
         self.system_message = self.set_system_message()
 
+    def set_location(self, location='The Australian outback'):
+        """Change the location the AI is role-playing in.  Defaults to: 'The Australian outback'"""
+
+        # Set the location for the AI to role-play in
+        self.location = location
+
+    def set_user_name(self, user_name='User'):
+        """Change the name the user is role-playing as.  Defaults to: 'User'"""
+
+        # Set the user name for the AI to role-play as
+        self.user_name = user_name
+
+    def set_character_name(self, character_name='Character'):
+        """Change the name of the AI's character.  Defaults to: 'Character'"""
+
+        # Set the character name for the AI to role-play as
+        self.character_name = character_name
+
     def set_system_message(self, long_term_memories='None'):
         """Adds long and mid term memories to the system message.  Returns the system message."""
 
@@ -131,7 +166,9 @@ class AIAgent():
                         'content': self.bos 
                                 + self.start_ins
                                 + self.system_prompt + ' '
-                                + ' Your character is: ' + self.character + ' '
+                                + ' Your are ' + self.character + '. '
+                                + ' Your name is ' + self.character_name + '. '
+                                + ' Your current location is ' + self.location + '. '
                                 + ' The story so far is: '
                                 + long_term_memories + ' '
                                 + self.mid_term_memory + self.end_ins + ' '}
@@ -152,7 +189,7 @@ class AIAgent():
             
 
 
-        self.prefix = """ Keep your response under 100 words and stay in character: """
+        self.prefix = """ You are located: {} Stay in character, and do not repeat what I am about to say. : """.format(self.location)
 
     def stringify_memory(self, memory):
         """Convert a memory list to a string.  Returns the string."""
@@ -168,19 +205,20 @@ class AIAgent():
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
         # Summary system message
-        summary_messages = [{'role':'system', 'content':'''You are conversation summarizer.  
-        Summarize the following conversation in 75 words or less.  Your summary should include the location and general situation.
-        focus on important names, events, opinions or plans made by the characters.'''}]
+        summary_prompt = {'role':'user', 'content':'''You are conversation summarizer.  
+        Summarize the previous conversation in 100 words or less.  Your summary should include the location and general situation.
+        focus on important names, events, opinions or plans made by the characters.'''}
     
         # add mid-term memory to memory cache (rolling memory) [NOT IMPLEMENTED]
         # memory_cache += self.mid_term_memory
         
-        # Add the short-term memory to the summary
-        if self.short_term_memory[0]['role'] == 'assistant' or self.short_term_memory[0]['role'] == 'system':
-            summary_messages.extend(self.short_term_memory[1:self.mid_term_memory_length+1])
-        else:
-            summary_messages.extend(self.short_term_memory[:self.mid_term_memory_length])
-
+        # Add the short-term memory to the summary, ens
+        offset = 0
+        while self.short_term_memory[offset]['role'] != 'user':
+            offset += 1
+        summary_messages = self.short_term_memory[offset:self.mid_term_memory_length + offset]
+            
+        summary_messages.append(summary_prompt)
         # Choose the model to use for summarization and summarize the conversation
         if 'gpt' in self.summary_model:
             summary = self.summary_agent.chat.completions.create(
@@ -273,10 +311,12 @@ class AIAgent():
         return lastest_cost
 
 
-    def query(self, prompt, temperature=.3, top_p=None):
+    def query(self, prompt, temperature=.3, top_p=None, max_tokens=200):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
+        
+        prompt = f'[{self.user_name}]: {prompt}'
         print('Current model is: ', self.model)
         self.messages = []
         # build the full model prompt
@@ -306,7 +346,7 @@ class AIAgent():
                 model=self.model,
                 messages=self.messages, # this is the conversation history
                 temperature=temperature, # this is the degree of randomness of the model's output
-                max_tokens=100,
+                max_tokens=max_tokens,
                 top_p=top_p
                  )
             print('successfully queried gpt')
@@ -314,9 +354,9 @@ class AIAgent():
             result = self.agent.chat(
                 model=self.model,
                 messages=[ChatMessage(role=message["role"], content=message["content"]) for message in self.messages],
-                max_tokens=100,
                 temperature=temperature,
                 top_p=top_p,
+                max_tokens=max_tokens,
                 safe_prompt=not self.nsfw)
             print('successfully queried mistral')
 
@@ -326,7 +366,7 @@ class AIAgent():
                 input=result.choices[0].message.content)
             flagged = moderation.results[0].flagged
             if flagged:
-                self.response = "I'm sorry, this response has been flagged as NSFW.  I cannot respond to this prompt."
+                self.response = "[System]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
                 print('NSFW content detected')
             else:
                 self.response = result.choices[0].message.content
@@ -334,7 +374,7 @@ class AIAgent():
         else:
             # Store the response
             self.response = result.choices[0].message.content
-
+        
         # add response to current message history
         self.messages.append({'role':'assistant', 'content':self.response})
 
