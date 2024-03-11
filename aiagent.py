@@ -1,4 +1,4 @@
-import streamlit
+import streamlit as st
 import openai
 from mistralai.client import MistralClient
 from mistralai.models.chat_completion import ChatMessage
@@ -13,7 +13,7 @@ try:
     with open(os.path.join(os.pardir,'mistral_ai_api.txt'), 'r') as f:
         mistral_api_key = f.read()
 except Exception as e:
-    mistral_api_key=streamlit.secrets['MISTRAL_API_KEY']
+    mistral_api_key=st.secrets['MISTRAL_API_KEY']
     print(e)
 
 try:
@@ -21,7 +21,7 @@ try:
         openai.api_key = f.read()
 
 except:
-    openai.api_key = streamlit.secrets['OPENAI_API_KEY']
+    openai.api_key = st.secrets['OPENAI_API_KEY']
 
 
 # model= 'gpt-3.5-turbo-0125'
@@ -33,8 +33,6 @@ except:
 # agent = MistralClient(api_key=api_key)
 # summary_agent = MistralClient(api_key=mistral_api_key)
 # summary_model = 'open-mistral-7b'
-
-embeddings = OpenAIEmbeddings()
     
 class Document:
     """Document class for storing text and metadata together.  This is used for storing long-term memory."""
@@ -47,7 +45,7 @@ class AIAgent():
     """AIAgent class, which acts as the character to converse with
     Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
-    def __init__(self, model='open-mistral-7b', embedding_model='gpt-3.5-turbo-0125', summary_model=None):
+    def __init__(self, model='open-mistral-7b', embedding_model='gpt', summary_model=None):
         # Initialize the AI agent
         self.set_model(model)
 
@@ -58,7 +56,7 @@ class AIAgent():
 
         # Initialize the embeddings model
         if 'gpt' in embedding_model:
-            self.embeddings = OpenAIEmbeddings()
+            self.embeddings = OpenAIEmbeddings(model='text-embedding-3-small')
         elif 'mistral' in embedding_model:
             self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
 
@@ -68,6 +66,7 @@ class AIAgent():
         self.user_name = 'User'
         self.character_name = 'Bill'
         self.prefix = f''
+        
         # Static system prompt
         self.system_prompt = """You will be roleplaying as: {}.  Your name is {}.
         Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
@@ -81,7 +80,7 @@ class AIAgent():
         - Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
         - Ask questions to learn more about topics or the user if relevant to the character.
         - Match the character's manner of speech and way of viewing the world and maintain a consistent tone and stayle and narrative flow.
-        - Only include information and describe actions that the character would know or do based on their background.
+        - Only include information and describe actions that the character would know or do based on their background.  If you don't know the answer to a question, truthfully say you do not know.
         - Remain fully in character throughout all responses.
         - Begin with "[{}]:" to indicate you are speaking as the provided character. Only use this tag once per response.
         - Be between 50 and 200 words, as is appropriate for the character's speaking style.
@@ -90,7 +89,11 @@ class AIAgent():
         Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
         You are to truly become this character and should not break character by referring to yourself as an AI, 
         acknowledging you are an AI assistant, or stating you are separate from the character you are portraying. 
-        If prompted to do something out of character, provide an in-character response explaining why you would not do that."""
+        If prompted to do something out of character, provide an in-character response explaining why you would not do that.
+        A good response will be engaging, entertaining, and consistent with the character's personality and background.
+        
+        You have a recent memory of: {}.  You also more distant memories of: {}.
+        Only to refer to these memories if they are present and relevant, they might help you maintain a consistent persona and narrative."""
 
         # token and usage statistics
         self.total_cost = 0
@@ -108,7 +111,8 @@ class AIAgent():
         # initialize the memory
         self.short_term_memory = []
         self.chat_history = []
-        self.mid_term_memory = 'nothing'
+        self.mid_term_memory = 'nothing yet.'
+        self.long_term_memories = 'nothing yet.'
         self.current_memory_id = 0
         self.messages = []
         self.system_message = self.set_system_message()
@@ -122,17 +126,20 @@ class AIAgent():
         # NSFW filter
         self.nsfw = False
 
-    def set_system_message(self, long_term_memories='None'):
-        """Adds long and mid term memories to the system message and adjusts system prompt.  Returns the system message."""
+    def set_system_message(self):
+        """Include dynamic elements in the system prompt.  Returns the system message."""
 
         self.system_message = {'role': 'system', 
                         'content': self.bos 
                                 + self.start_ins
-                                + self.system_prompt.format(self.character, self.character_name, self.location, self.character_name) + ' '
-                                + ' Your long-term recalled memories are: ' + long_term_memories + ' '
-                                + ' Your more recent memories are ' + self.mid_term_memory 
+                                + self.system_prompt.format(self.character, 
+                                                            self.character_name, 
+                                                            self.location, 
+                                                            self.character_name,
+                                                            self.mid_term_memory,
+                                                            self.long_term_memories)
                                 + self.end_ins + ' '}
-        print('SYSTEM MESSAGE: ', self.system_message)
+        
 
     def set_model(self, model='open-mistral-7b'):
         """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
@@ -193,9 +200,7 @@ class AIAgent():
 
         # if the short-term memory is too long, summarize it, replace mid-term memory, and add it to the long term memory
             
-
-
-        self.prefix = f""" You are located: {self.location} Stay in character and be sure to maintain your personality and way of speaking.: """
+        self.prefix = f""" Respond 50 - 100 words. Stay in character and be sure to maintain your personality and manner of speaking.: """
 
     def stringify_memory(self, memory):
         """Convert a memory list to a string.  Returns the string."""
@@ -278,14 +283,14 @@ class AIAgent():
 
             self.long_term_memory_index = FAISS.from_documents([memory_document], self.embeddings)
 
-
-        self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
+        else: 
+            self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
 
     def query_long_term_memory(self, query, k=2):
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
-            memories = self.long_term_memory_index.similarity_search(query, k=k)
+            memories = self.long_term_memory_index.amax_marginal_relevance_search(query, k=k, fetch_k = k*3)
             sorted_memories = sorted(memories, key=lambda x: x.metadata['timestamp'])
         except Exception as e:
             print('no memories found')
@@ -312,6 +317,12 @@ class AIAgent():
         elif model.startswith('open-mixtral-8x7b'):
             input_cost = 0.0007 / 1000
             output_cost = 0.0007 / 1000
+        elif model.startswith('text-embedding-3-small'):
+            input_cost = 0.000002 / 1000
+            output_cost = 0.000002 / 1000
+        elif model.startswith('text-embedding-3-large'):
+            input_cost = 0.00013 / 1000
+            output_cost = 0.00013 / 1000
         else:
             print('Model not recognized')
         
@@ -330,7 +341,7 @@ class AIAgent():
         return lastest_cost
 
 
-    def query(self, prompt, temperature=.3, top_p=None, max_tokens=200):
+    def query(self, prompt, temperature=.3, top_p=None, max_tokens=100):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
@@ -343,17 +354,16 @@ class AIAgent():
             returned_memories = self.query_long_term_memory(prompt)
             if len(returned_memories) > 0:
                 # convert the memories to a string
-                retrieved_memories = {doc.page_content for doc in returned_memories}
-                long_term_memories = ' : '.join(retrieved_memories)
+                retrieved_memories = {doc.page_content for doc in returned_memories} # Remove duplicate memories
+                self.long_term_memories = ' : '.join(retrieved_memories)
                 for i, memory in enumerate(retrieved_memories):
                     print(f"<<Vector DB retrieved Memory {i}>>:\n", memory)
             else:
-                long_term_memories = ''
                 print('no memories retrieved')
         else:
-            long_term_memories = ''
+            print('no memories yet')
 
-        self.set_system_message(long_term_memories=long_term_memories)
+        self.set_system_message()
 
         self.messages.append(self.system_message)
         self.messages.extend(self.short_term_memory)
@@ -413,7 +423,8 @@ class AIAgent():
         """Clear the AI's memory.  Returns nothing."""
         self.short_term_memory = []
         self.chat_history = []
-        self.mid_term_memory = ''
+        self.mid_term_memory = 'nothing, yet'
+        self.long_term_memory = 'nothing, yet'
         self.current_memory_id = 0
         self.prefix = ''
         self.response = "I'm thinking of my response"
@@ -434,7 +445,6 @@ class AIAgent():
         """Return the AI's full chat history.  Returns a list of messages."""
         return self.chat_history
     
-
     def save_agent(self):
         """Save agent to path"""
         saved_attrs = self.__dict__.copy()
@@ -460,7 +470,7 @@ class AIAgent():
         # De-serialize the vector db
         if 'long_term_memory_index' in loaded_attrs:
             self.long_term_memory_index = FAISS.deserialize_from_bytes(loaded_attrs['long_term_memory_index'], 
-                                                                                   self.embeddings)
-            print('deserielized long term memory index')
+                                                                                   self.get_embedding)
+            print('deserialized long term memory index')
         
     
