@@ -82,7 +82,6 @@ def set_nsfw():
     """Set the AI's NSFW mode.  Returns nothing."""
     st.session_state['agent'].nsfw = st.session_state['nsfw']
 
-print('GOT PAST THE FUNCTIONS')
 # Set the title
 st.title('Chat with a Character!')
 
@@ -140,7 +139,8 @@ if 'pickled_agent' not in st.session_state:
 # Create the character settings
 with st.container(border=True):
     st.markdown('#### Character Settings')
-    st.markdown('This can be changed at any time, and the character will remember the conversation.')
+    st.markdown('''This can be changed at any time, and the character will remember the conversation.
+                \n Other than the first sentence, address the description to the character''')
     # set the character with a text input and button
     st.text_area('The character is...', value=st.session_state['agent'].character,
                 max_chars=500, help='Describe the character', key='character', height=100,
@@ -164,9 +164,7 @@ with st.container(border=True):
     
     # set location of the conversation.
     st.markdown('#### Current Location')
-    st.markdown('This can be changed at any time, and the character will remember the conversation.')
-
-
+    st.markdown('''This can be changed at any time, and the character will remember the conversation.''')
 
 
 # Create chat input

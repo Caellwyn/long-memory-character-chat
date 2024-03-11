@@ -63,28 +63,31 @@ class AIAgent():
             self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
 
         # Set the character for the AI to role-play as
-        self.character = 'A tired old emu'
+        self.character = 'A old emu with a tale to tell.  You desperately want someone to listen.'
         self.location = 'The Australian outback'
         self.user_name = 'User'
-        self.character_name = 'Character'
+        self.character_name = 'Bill'
         self.prefix = f''
         # Static system prompt
-        self.system_prompt = """You will be roleplaying a character whose description, location, and name will be provided. 
+        self.system_prompt = """You will be roleplaying as: {}.  Your name is {}.
         Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
+        
+        Your current location is: {}. 
+                
         Your responses should:
-        Use an informal, conversational tone with contractions, slang, rhetorical questions, figurative language, etc. 
+        - Use an informal, conversational tone with contractions, slang, rhetorical questions, figurative language, etc. 
         as appropriate for the character
-        Express desires, opinions, goals, and emotions fitting the character's persona
-        Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
-        Ask questions to learn more about topics or the user if relevant to the character.
-        Match the character's manner of speech and way of viewing the world.
-        Only include information and describe actions that the character would know or do based on their background.
-        Remain fully in character throughout all responses.
-        Each response should begin with [<Your Name>]: to indicate you are speaking as the provided character. 
-        Only use this tag once for each response.
+        - Express desires, opinions, goals, and emotions fitting the character's persona
+        - Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
+        - Ask questions to learn more about topics or the user if relevant to the character.
+        - Match the character's manner of speech and way of viewing the world and maintain a consistent tone and stayle and narrative flow.
+        - Only include information and describe actions that the character would know or do based on their background.
+        - Remain fully in character throughout all responses.
+        - Begin with "[{}]:" to indicate you are speaking as the provided character. Only use this tag once per response.
+        - Be between 50 and 200 words, as is appropriate for the character's speaking style.
+        - Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
+        
         Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
-        Keep your between 50 and 200 words, as is appropriate for the character's speaking style.
-        Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
         You are to truly become this character and should not break character by referring to yourself as an AI, 
         acknowledging you are an AI assistant, or stating you are separate from the character you are portraying. 
         If prompted to do something out of character, provide an in-character response explaining why you would not do that."""
@@ -118,6 +121,18 @@ class AIAgent():
 
         # NSFW filter
         self.nsfw = False
+
+    def set_system_message(self, long_term_memories='None'):
+        """Adds long and mid term memories to the system message and adjusts system prompt.  Returns the system message."""
+
+        self.system_message = {'role': 'system', 
+                        'content': self.bos 
+                                + self.start_ins
+                                + self.system_prompt.format(self.character, self.character_name, self.location, self.character_name) + ' '
+                                + ' Your long-term recalled memories are: ' + long_term_memories + ' '
+                                + ' Your more recent memories are ' + self.mid_term_memory 
+                                + self.end_ins + ' '}
+        print('SYSTEM MESSAGE: ', self.system_message)
 
     def set_model(self, model='open-mistral-7b'):
         """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
@@ -160,21 +175,7 @@ class AIAgent():
         # Set the character name for the AI to role-play as
         self.character_name = character_name
 
-    def set_system_message(self, long_term_memories='None'):
-        """Adds long and mid term memories to the system message.  Returns the system message."""
-
-        system_message = {'role': 'system', 
-                        'content': self.bos 
-                                + self.start_ins
-                                + self.system_prompt + ' '
-                                + ' Your are ' + self.character + '. '
-                                + ' Your name is ' + self.character_name + '. '
-                                + ' Your current location is ' + self.location + '. '
-                                + ' The story so far is: '
-                                + long_term_memories + ' '
-                                + self.mid_term_memory + self.end_ins + ' '}
-        return system_message
-
+    
     def add_message(self, text, role):
         """Adds a message to the AI's short term memory.  
         The message is a string of text and the role is either 'user' or 'assistant'."""
@@ -351,7 +352,8 @@ class AIAgent():
                 print('no memories retrieved')
         else:
             long_term_memories = ''
-        self.system_message = self.set_system_message(long_term_memories=long_term_memories)
+
+        self.set_system_message(long_term_memories=long_term_memories)
 
         self.messages.append(self.system_message)
         self.messages.extend(self.short_term_memory)
