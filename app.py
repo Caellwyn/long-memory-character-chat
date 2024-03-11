@@ -171,17 +171,22 @@ with st.container(border=True):
 
 # Create chat input
 st.markdown('#### Chat with the Character')
+
 with st.expander("Input Messages",expanded=True):
+
+    # set the location of the conversation
+    location = st.text_input('The current location is...', value=st.session_state['agent'].location,
+                        max_chars=50, help='Describe the location of the conversation', key='location',
+                        on_change=set_location)
+
+    # Chat input
     if prompt := st.chat_input("Your message here", max_chars=500):
         with st.spinner("Thinking..."):
             query_agent(prompt, 
                         temperature=temperature,
                         top_p=top_p)
             
-    # set the location of the conversation
-    location = st.text_input('The current location is...', value=st.session_state['agent'].location,
-                        max_chars=50, help='Describe the location of the conversation', key='location',
-                        on_change=set_location)
+
             
 # display the conversation history
 with st.container(height=500):

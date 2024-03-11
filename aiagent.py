@@ -80,8 +80,8 @@ class AIAgent():
         Match the character's manner of speech and way of viewing the world.
         Only include information and describe actions that the character would know or do based on their background.
         Remain fully in character throughout all responses.
-        Your response should begin with [<Your Name>]: to indicate you are speaking as the provided character. 
-        Only use this tag once at the beginning of your response.
+        Each response should begin with [<Your Name>]: to indicate you are speaking as the provided character. 
+        Only use this tag once for each response.
         Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
         Keep your between 50 and 200 words, as is appropriate for the character's speaking style.
         Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
@@ -111,10 +111,10 @@ class AIAgent():
         self.system_message = self.set_system_message()
 
         # Set the short term memory length and overlap
-        self.mid_term_memory_length = 8 ## must be even!
+        self.mid_term_memory_length = 4 ## must be even!
         if self.mid_term_memory_length % 2 != 0:
             self.mid_term_memory_length += 1
-        self.mid_term_memory_overap = 4
+        self.mid_term_memory_overap = 2
 
         # NSFW filter
         self.nsfw = False
@@ -205,7 +205,7 @@ class AIAgent():
             memory_string += message['role'] + ': ' + message['content'] + ' '
         return memory_string
 
-    def summarize_memories(self, max_tokens=100):
+    def summarize_memories(self, max_tokens=150):
         """Summarize the short-term memory and add it to the mid-term memory.  
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
