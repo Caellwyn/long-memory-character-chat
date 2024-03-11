@@ -51,7 +51,7 @@ class AIAgent():
 
         # initialize the summary model
         if summary_model is None:
-            summary_model = model
+            summary_model = 'gpt-3.5-turbo-0125'
         self.set_summary_model(summary_model)
 
         # Initialize the embeddings model
@@ -211,24 +211,23 @@ class AIAgent():
             memory_string += message['role'] + ': ' + message['content'] + ' '
         return memory_string
 
-    def summarize_memories(self, max_tokens=150):
+    def summarize_memories(self, max_tokens=200):
         """Summarize the short-term memory and add it to the mid-term memory.  
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
         # Summary system message
         summary_prompt = {'role':'user', 'content':f'''
                           You are {self.character_name}'s conversation summarizer. 
-                          Concisely summarize the key points covered in the same speaking style, personality, as {self.character_name}.
+                          Concisely summarize the key points covered in the converstion using the same speaking style, personality, as {self.character_name}.
                           The summary should capture:
-                        - Important names, events, or future plans mentioned.
+                        - Important names, events, and be sure to mention your location.  If there is any indication of time or date, mention that as well.
                         - {self.character_name}'s and {self.user_name}'s opinions, feelings, attitude, or stance on topics discussed.
                         - Any significant changes or developments in your relationship with {self.user_name}.
 
-                        Keep the summary brief, around 50-100 words. Speak authentically as {self.character_name}, 
-                        using contractions, slang, rhetorical questions, figurative language, and the 
-                        same informal voice you employ during conversations. 
+                        Keep the summary brief, around 100-200 words. Speak authentically as {self.character_name}, 
+                        using same informal voice you employ during conversations, including any accent, or quirks of your speech. 
 
-                        The summary will be stored to reinforce {self.character_name}'s consistent persona over time. 
+                        The summary will be stored to reinforce {self.character_name}'s consistent persona and recollections over time. 
                         If asked to summarize something out-of-character, 
                         be sure to respond accordingly from {self.character_name}'s perspective.
                         '''}
@@ -470,7 +469,7 @@ class AIAgent():
         # De-serialize the vector db
         if 'long_term_memory_index' in loaded_attrs:
             self.long_term_memory_index = FAISS.deserialize_from_bytes(loaded_attrs['long_term_memory_index'], 
-                                                                                   self.get_embedding)
+                                                                                   self.embeddings)
             print('deserialized long term memory index')
         
     

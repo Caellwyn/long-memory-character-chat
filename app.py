@@ -162,15 +162,15 @@ with st.container(border=True):
     st.button('Reset conversation', on_click=clear_history,
                        use_container_width=False)
     
-    # set location of the conversation.
-    st.markdown('#### Current Location')
-    st.markdown('''This can be changed at any time, and the character will remember the conversation.''')
-
 
 # Create chat input
 st.markdown('#### Chat with the Character')
 
-with st.expander("Input Messages",expanded=True):
+with st.expander("Conversation", expanded=True):
+
+    # set location of the conversation.
+    st.markdown('#### Current Location')
+    st.markdown('''This can be changed at any time, and the character will remember the conversation.''')
 
     # set the location of the conversation
     location = st.text_input('The current location is...', value=st.session_state['agent'].location,
