@@ -3,6 +3,7 @@ from streamlit.web.server.websocket_headers import _get_websocket_headers
 from aiagent import AIAgent
 import os
 
+st.set_page_config(layout="wide")
 
 # get the websocket headers and session id
 try:
@@ -26,7 +27,6 @@ def get_agent(session_id, model='open-mistral-7b', ):
     print('creating the ai agent')
     return agent
 
-
 def query_agent(prompt, temperature=0.1, top_p=0.0):
     """Query the AI agent.  Returns a string."""
     try:      
@@ -43,19 +43,23 @@ def clear_history():
 
 def set_character():
     """Set the AI's character.  Returns nothing."""
-    st.session_state['agent'].set_character(st.session_state['character'])
+    if 'character' in st.session_state:
+        st.session_state['agent'].set_character(st.session_state['character']) 
 
 def set_location():
     """Set the AI's location.  Returns nothing."""
-    st.session_state['agent'].set_location(st.session_state['location'])
+    if 'location' in st.session_state:
+        st.session_state['agent'].set_location(st.session_state['location'])
 
 def set_user_name():
     """Set the AI's user name.  Returns nothing."""
-    st.session_state['agent'].set_user_name(st.session_state['user_name'])
+    if 'user_name' in st.session_state:
+        st.session_state['agent'].set_user_name(st.session_state['user_name'])
 
 def set_character_name():
     """Set the AI's character name.  Returns nothing."""
-    st.session_state['agent'].set_character_name(st.session_state['character_name'])
+    if 'character_name' in st.session_state:
+        st.session_state['agent'].set_character_name(st.session_state['character_name'])
 
 def save_character():
     """Save the AI's character and conversation history.  Returns nothing."""
@@ -78,7 +82,7 @@ def set_nsfw():
     """Set the AI's NSFW mode.  Returns nothing."""
     st.session_state['agent'].nsfw = st.session_state['nsfw']
 
-
+print('GOT PAST THE FUNCTIONS')
 # Set the title
 st.title('Chat with a Character!')
 
@@ -90,12 +94,12 @@ st.write('''This app allows you to chat with a character.  You can set the chara
          The character is not a substitute for professional advice.  Please do not share personal information with the character.
          The character and developer are not responsible for any actions you take based on its responses.
          Responses should not be considered factual in any way.
-         \n The responses are not filtered in any way and may include NSFW or otherwise offensive content.  
          Please be aware that the character may say things that are not appropriate for all audiences.  
          If you are under 18, please navigate away from this page.
          Please use this app responsibly.  Enjoy!''')
 
 
+# Create the model settings
 with st.container(border=True):
     # set the temperature for the model
     st.markdown('#### Model Settings')
@@ -113,9 +117,8 @@ with st.container(border=True):
             key='model_name', on_change=change_model)
     
     # set the NSFW mode
-    user_nsfw_password = st.text_input('Enter the NSFW password', value=None, type='password', key='nsfw_password')
+    user_nsfw_password = st.text_input('Password required for NSFW content', value=None, type='password', key='nsfw_password')
     if user_nsfw_password:
-
         if user_nsfw_password == nsfw_password:
             st.toggle('NSFW', value=False, key='nsfw', on_change=set_nsfw)
         else:
@@ -134,13 +137,14 @@ else:
 if 'pickled_agent' not in st.session_state:
     st.session_state['pickled_agent'] = None
 
+# Create the character settings
 with st.container(border=True):
     st.markdown('#### Character Settings')
     st.markdown('This can be changed at any time, and the character will remember the conversation.')
     # set the character with a text input and button
-    character = st.text_area('The character is...', value=st.session_state['agent'].character,
-                            max_chars=500, help='Describe the character', key='character', height=100,
-                            on_change=set_character)
+    st.text_area('The character is...', value=st.session_state['agent'].character,
+                max_chars=500, help='Describe the character', key='character', height=100,
+                on_change=set_character)
     
 
     col1, col2 = st.columns(2)
@@ -161,19 +165,23 @@ with st.container(border=True):
     # set location of the conversation.
     st.markdown('#### Current Location')
     st.markdown('This can be changed at any time, and the character will remember the conversation.')
-    location = st.text_input('The character is currently...', value=st.session_state['agent'].location,
-                            max_chars=50, help='Describe the location of the conversation', key='location',
-                            on_change=set_location)
 
-st.markdown('#### Chat with the Character')
+
+
 
 # Create chat input
+st.markdown('#### Chat with the Character')
 with st.expander("Input Messages",expanded=True):
     if prompt := st.chat_input("Your message here", max_chars=500):
         with st.spinner("Thinking..."):
             query_agent(prompt, 
                         temperature=temperature,
                         top_p=top_p)
+            
+    # set the location of the conversation
+    location = st.text_input('The current location is...', value=st.session_state['agent'].location,
+                        max_chars=50, help='Describe the location of the conversation', key='location',
+                        on_change=set_location)
             
 # display the conversation history
 with st.container(height=500):
@@ -216,6 +224,6 @@ with st.sidebar.form('upload_character', clear_on_submit=True):
 st.sidebar.write(f'Total current memory tokens: {st.session_state["agent"].current_memory_tokens}')
 st.sidebar.write(f'Total cost of this conversation is: {st.session_state["agent"].total_cost}')
 st.sidebar.write(f'Total tokens sent is: {st.session_state["agent"].total_tokens}')
-st.sidebar.write(f'Average number of tokens per message is: {st.session_state["agent"].average_tokens}')
-st.sidebar.write(f'Average cost per message is: {st.session_state["agent"].average_cost}')
-st.sidebar.write(f'Total number of messages to and from the character: {len(st.session_state["agent"].chat_history)}')
+st.sidebar.write(f'Average number of tokens per interaction is: {st.session_state["agent"].average_tokens}')
+st.sidebar.write(f'Average cost per interaction is: {st.session_state["agent"].average_cost}')
+st.sidebar.write(f'Total number of interactions is: {len(st.session_state["agent"].chat_history) / 2}')

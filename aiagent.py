@@ -69,21 +69,22 @@ class AIAgent():
         self.character_name = 'Character'
         self.prefix = f''
         # Static system prompt
-        self.system_prompt = """You will be roleplaying a character whose description, location, and name will be provided separately. 
+        self.system_prompt = """You will be roleplaying a character whose description, location, and name will be provided. 
         Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
         Your responses should:
         Use an informal, conversational tone with contractions, slang, rhetorical questions, figurative language, etc. 
         as appropriate for the character
         Express desires, opinions, goals, and emotions fitting the character's persona
-        Make decisions and take actions the character would take
-        Ask questions to learn more about topics or the user if relevant to the character
-        Match the character's manner of speech and way of viewing the world
-        Only include information and describe actions that the character would know or do based on their background
-        Remain fully in character throughout all responses unless instructed otherwise
+        Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
+        Ask questions to learn more about topics or the user if relevant to the character.
+        Match the character's manner of speech and way of viewing the world.
+        Only include information and describe actions that the character would know or do based on their background.
+        Remain fully in character throughout all responses.
         Your response should begin with [<Your Name>]: to indicate you are speaking as the provided character. 
         Only use this tag once at the beginning of your response.
+        Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
         Keep your between 50 and 200 words, as is appropriate for the character's speaking style.
-        Use Markdown formatting like headers, italics and bold to enhance your response when appropriate.
+        Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
         You are to truly become this character and should not break character by referring to yourself as an AI, 
         acknowledging you are an AI assistant, or stating you are separate from the character you are portraying. 
         If prompted to do something out of character, provide an in-character response explaining why you would not do that."""
@@ -177,11 +178,15 @@ class AIAgent():
     def add_message(self, text, role):
         """Adds a message to the AI's short term memory.  
         The message is a string of text and the role is either 'user' or 'assistant'."""
+        
         self.chat_history.append({'role':role, 'content':text})
 
         # add a message to the AI's short term memory
         if role == 'user':
-            self.short_term_memory.append({'role':role, 'content': self.start_ins + text + self.end_ins})
+            self.short_term_memory.append({'role':role, 'content': self.start_ins 
+                                           + f'<Location>: {self.location}, <Message>: ' 
+                                           + text 
+                                           + self.end_ins})
         if role == 'assistant':
             self.short_term_memory.append({'role':role, 'content': text + self.eos})
 
@@ -189,7 +194,7 @@ class AIAgent():
             
 
 
-        self.prefix = """ You are located: {} Stay in character, and do not repeat what I am about to say. : """.format(self.location)
+        self.prefix = f""" You are located: {self.location} Stay in character and be sure to maintain your personality and way of speaking.: """
 
     def stringify_memory(self, memory):
         """Convert a memory list to a string.  Returns the string."""
@@ -205,9 +210,22 @@ class AIAgent():
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
         # Summary system message
-        summary_prompt = {'role':'user', 'content':'''You are conversation summarizer.  
-        Summarize the previous conversation in 100 words or less.  Your summary should include the location and general situation.
-        focus on important names, events, opinions or plans made by the characters.'''}
+        summary_prompt = {'role':'user', 'content':f'''
+                          You are {self.character_name}'s conversation summarizer. 
+                          Concisely summarize the key points covered in the same speaking style, personality, as {self.character_name}.
+                          The summary should capture:
+                        - Important names, events, or future plans mentioned.
+                        - {self.character_name}'s and {self.user_name}'s opinions, feelings, attitude, or stance on topics discussed.
+                        - Any significant changes or developments in your relationship with {self.user_name}.
+
+                        Keep the summary brief, around 50-100 words. Speak authentically as {self.character_name}, 
+                        using contractions, slang, rhetorical questions, figurative language, and the 
+                        same informal voice you employ during conversations. 
+
+                        The summary will be stored to reinforce {self.character_name}'s consistent persona over time. 
+                        If asked to summarize something out-of-character, 
+                        be sure to respond accordingly from {self.character_name}'s perspective.
+                        '''}
     
         # add mid-term memory to memory cache (rolling memory) [NOT IMPLEMENTED]
         # memory_cache += self.mid_term_memory
@@ -316,8 +334,7 @@ class AIAgent():
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
         
-        prompt = f'[{self.user_name}]: {prompt}'
-        print('Current model is: ', self.model)
+        prompt = f'[{self.user_name}]: {prompt} '
         self.messages = []
         # build the full model prompt
         # Query the long-term memory for similar documents
@@ -349,7 +366,6 @@ class AIAgent():
                 max_tokens=max_tokens,
                 top_p=top_p
                  )
-            print('successfully queried gpt')
         elif 'mistral' in self.model or 'mixtral' in self.model:
             result = self.agent.chat(
                 model=self.model,
@@ -358,7 +374,6 @@ class AIAgent():
                 top_p=top_p,
                 max_tokens=max_tokens,
                 safe_prompt=not self.nsfw)
-            print('successfully queried mistral')
 
         # Check For NSFW Content
         if not self.nsfw:
