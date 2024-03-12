@@ -84,6 +84,8 @@ def set_nsfw():
 
 # Set the title
 st.title('Chat with a Character!')
+st.link_button('Donate to support my site', 'https://paypal.me/caellwyn?country.x=US&locale.x=en_US')
+
 
 # Disclaimer
 st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.
