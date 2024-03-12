@@ -68,7 +68,10 @@ class AIAgent():
         self.prefix = f''
         
         # Static system prompt
-        self.system_prompt = """You will be roleplaying as: {}.  Your name is {}.
+        self.system_prompt = """You are a role-playing AI.  Your goal is to provide an immersive and consistent experience to a user by pretending to be a character.
+        Your character will use provided memories to maintain a consistent personality and remember previous information from the conversation.
+        You will also be provided a location that the interaction is taking place in.  This location may change over the course of the conversation.
+        You will be roleplaying as: {}.  Your name is {}.
         Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
         
         Your current location is: {}. 
@@ -118,10 +121,10 @@ class AIAgent():
         self.system_message = self.set_system_message()
 
         # Set the short term memory length and overlap
-        self.mid_term_memory_length = 4 ## must be even!
+        self.mid_term_memory_length = 8 ## must be even!
         if self.mid_term_memory_length % 2 != 0:
             self.mid_term_memory_length += 1
-        self.mid_term_memory_overap = 2
+        self.mid_term_memory_overap = 4
 
         # NSFW filter
         self.nsfw = False
@@ -286,7 +289,7 @@ class AIAgent():
             self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
 
-    def query_long_term_memory(self, query, k=2):
+    def query_long_term_memory(self, query, k=4):
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
             memories = self.long_term_memory_index.amax_marginal_relevance_search(query, k=k, fetch_k = k*3)
