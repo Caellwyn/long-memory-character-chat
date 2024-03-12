@@ -83,7 +83,7 @@ class AIAgent():
         - Only include information and describe actions that the character would know or do based on their background.  If you don't know the answer to a question, truthfully say you do not know.
         - Remain fully in character throughout all responses.
         - Begin with "[{}]:" to indicate you are speaking as the provided character. Only use this tag once per response.
-        - Be between 50 and 200 words, as is appropriate for the character's speaking style.
+        - Be between 50 and 150 words, as is appropriate for the character's speaking style.
         - Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
         
         Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
@@ -340,7 +340,7 @@ class AIAgent():
         return lastest_cost
 
 
-    def query(self, prompt, temperature=.3, top_p=None, max_tokens=100):
+    def query(self, prompt, temperature=.3, top_p=None, max_tokens=200):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
