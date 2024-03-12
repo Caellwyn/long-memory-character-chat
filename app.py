@@ -169,8 +169,8 @@ st.markdown('#### Chat with the Character')
 with st.expander("Conversation", expanded=True):
 
     # set location of the conversation.
-    st.markdown('#### Current Location')
-    st.markdown('''This can be changed at any time, and the character will remember the conversation.''')
+    st.markdown('#### Location and messages')
+    st.markdown('Feel free to change the location during the conversation as appropriate.  The AI may not notice the change until the next message, however.')
 
     # set the location of the conversation
     location = st.text_input('The current location is...', value=st.session_state['agent'].location,
