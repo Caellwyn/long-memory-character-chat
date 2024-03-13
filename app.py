@@ -17,7 +17,6 @@ try:
         nsfw_password = f.read()
 
 except Exception as e:
-    print(e)
     nsfw_password = st.secrets['NSFW_PASSWORD']
 
 @st.cache_resource
@@ -80,7 +79,8 @@ def change_model():
 
 def set_nsfw():
     """Set the AI's NSFW mode.  Returns nothing."""
-    st.session_state['agent'].nsfw = st.session_state['nsfw']
+    if 'nsfw' in st.session_state:
+        st.session_state['agent'].nsfw = st.session_state['nsfw']
 
 # Set the title
 st.title('Chat with a Character!')

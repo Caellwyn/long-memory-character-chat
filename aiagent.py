@@ -14,7 +14,6 @@ try:
         mistral_api_key = f.read()
 except Exception as e:
     mistral_api_key=st.secrets['MISTRAL_API_KEY']
-    print(e)
 
 try:
     with open(os.path.join(os.pardir,'chatgpt_api.txt'), 'r') as f:
@@ -121,10 +120,36 @@ class AIAgent():
         self.system_message = self.set_system_message()
 
         # Set the short term memory length and overlap
-        self.mid_term_memory_length = 8 ## must be even!
+
+        ## How many messages are summarized: 
+        ## must be even!
+        self.mid_term_memory_length = 6 
+
+        ## How long short-term memory can grow: 
+        ## must be greater than mid_term_memory_length
+        ## must be even
+        self.max_short_term_memory_length = 10 
+        
+        ## How much overlap between each summarized mid-term memory: 
+        ## must be less than mid_term_memory_length
+        ## must be Even
+        self.mid_term_memory_overlap = 2 
+
+        ## Checks to enforce length rules
         if self.mid_term_memory_length % 2 != 0:
             self.mid_term_memory_length += 1
-        self.mid_term_memory_overap = 4
+
+        if self.max_short_term_memory_length % 2 != 0:
+            self.max_short_term_memory_length += 1
+
+        if self.mid_term_memory_overlap % 2 != 0:
+            self.mid_term_memory_overlap += 1       
+
+        if self.mid_term_memory_length > self.max_short_term_memory_length:
+            self.max_short_term_memory_length = self.mid_term_memory_length + 1
+
+        if self.mid_term_memory_overlap > self.mid_term_memory_length:
+            self.mid_term_memory_length = self.mid_term_memory_length - 1 
 
         # NSFW filter
         self.nsfw = False
@@ -266,11 +291,12 @@ class AIAgent():
         if self.mid_term_memory != 'nothing':
             self.add_long_term_memory(self.mid_term_memory)
         # Store the summary as the new mid-term memory
-        self.mid_term_memory = f"At {datetime.datetime.now().strftime('%H:%M:%S')}: {summary.choices[0].message.content}"
+        self.mid_term_memory = f"At {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}: {summary.choices[0].message.content}"
 
         # remove the oldest messages from the short-term memory
 
-        self.short_term_memory = self.short_term_memory[-self.mid_term_memory_length + self.mid_term_memory_overap:]
+        self.short_term_memory = self.short_term_memory[self.mid_term_memory_length - self.mid_term_memory_overlap:]
+                                                        
 
     def add_long_term_memory(self, memory):
         """add a memory to the long-term memory vector store.  Returns nothing."""
@@ -292,8 +318,9 @@ class AIAgent():
     def query_long_term_memory(self, query, k=4):
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
-            memories = self.long_term_memory_index.amax_marginal_relevance_search(query, k=k, fetch_k = k*3)
-            sorted_memories = sorted(memories, key=lambda x: x.metadata['timestamp'])
+
+            memories = self.long_term_memory_index.similarity_search(query, k=k, fetch_k = k*3)
+            sorted_memories = sorted(memories, key=lambda x: x.metadata['id'])
         except Exception as e:
             print('no memories found')
             print(e)
@@ -415,10 +442,8 @@ class AIAgent():
 
         # add cost of message to total cost
         self.count_cost(result, self.model)
-
-        if len(self.short_term_memory) > self.mid_term_memory_length * 2:
+        if len(self.short_term_memory) >= self.max_short_term_memory_length:
             self.summarize_memories()
-
         return self.response
     
     def clear_history(self):
@@ -450,10 +475,12 @@ class AIAgent():
     def save_agent(self):
         """Save agent to path"""
         saved_attrs = self.__dict__.copy()
+        del saved_attrs['system_prompt']
         del saved_attrs['summary_agent']
         del saved_attrs['agent']
         del saved_attrs['embeddings']
         if 'long_term_memory_index' in saved_attrs.keys():
+            print('found long-term memories')
             saved_attrs['long_term_memory_index'] = saved_attrs['long_term_memory_index'].serialize_to_bytes()
         return pickle.dumps(saved_attrs)
 
