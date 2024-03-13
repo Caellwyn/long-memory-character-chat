@@ -76,8 +76,8 @@ class AIAgent():
         Your current location is: {}. 
                 
         Your responses should:
-        - Use an informal, conversational tone with contractions, slang, rhetorical questions, figurative language, etc. 
-        as appropriate for the character
+        - Use an informal, conversational tone appropriate to the character
+        - Don't be afraid to use contractions, slang, rhetorical questions, figurative language, etc. if the character would. 
         - Express desires, opinions, goals, and emotions fitting the character's persona
         - Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
         - Ask questions to learn more about topics or the user if relevant to the character.
@@ -94,8 +94,8 @@ class AIAgent():
         If prompted to do something out of character, provide an in-character response explaining why you would not do that.
         A good response will be engaging, entertaining, and consistent with the character's personality and background.
         
-        You have a recent memory of: {}.  You also more distant memories of: {}.
-        Only to refer to these memories if they are present and relevant, they might help you maintain a consistent persona and narrative."""
+        You have a recent memory of: {}.  You also more distant memories of: {}.  Use these memories to guide your speaking style and a consistent narrative.
+        Only to refer to these memories if they are present and relevant, they should help you maintain a consistent persona and narrative."""
 
         # token and usage statistics
         self.total_cost = 0
