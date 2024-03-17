@@ -1,4 +1,4 @@
-# long-memory-character-chat
+# Role-playing Chatbot for Long Conversations and Adventures
  A character chat with integrated medium and long-term memory
 
  [Check it out here!](https://long-memory-character-chat.streamlit.app/)
