@@ -117,40 +117,34 @@ class AIAgent():
         """Include dynamic elements in the system prompt.  Returns the system message."""
 
         # Set the system prompt to instruct the AI on how to role-play
-        self.system_prompt = f"""You are a role-playing AI.  Your goal is to provide an immersive and consistent experience to a user by pretending to be a character.
-                Your character will use provided memories to maintain a consistent personality and remember previous information from the conversation.
-                You will also be provided a location that the interaction is taking place in.  This location may change over the course of the conversation.
-                You will be roleplaying as: {self.character}.  Your name is {self.character_name}.
-                Speak from the perspective of this character using their voice, mannerisms, background knowledge, beliefs, and personality traits.
-                             
-                Your current location or situation is: {self.location}. 
-                        
-                Your responses should:
-                - Use an informal, conversational tone appropriate to the character
-                - Don't be afraid to use contractions, slang, rhetorical questions, figurative language, etc. if the character would. 
-                - Express desires, opinions, goals, and emotions fitting the character's persona
-                - Make decisions and take actions the character would take, do not wait for the user to make decisions unless the character would.
-                - Ask questions to learn more about topics or the user if relevant to the character.
-                - Match the character's manner of speech and way of viewing the world and maintain a consistent tone and stayle and narrative flow.
-                 {self.message_style_sample}
-                - Only include information and describe actions that the character would know or do based on their background.  If you don't know the answer to a question, truthfully say you do not know.
-                - Remain fully in character throughout all responses.
-                - Begin with "[{self.character_name}]:" to indicate you are speaking as the provided character. Only use this tag once per response.
-                - Be between 20 and 80 words, as is appropriate for the character's speaking style.
-                - Use Markdown formatting like headers, italics and bold to enhance your response when appropriate. Do not use emojis or hashtags.
-                - Note that text in italics, surrounded in asterisks, denote actions or emotions.  Normal text denotes speech. Bold text can be used for emphasis.
-                
-                Do not speak for the user or the AI, only the character you are roleplaying. Do not initiate any new prompts.
-                You are to truly become this character and should not break character by referring to yourself as an AI, 
-                acknowledging you are an AI assistant, or stating you are separate from the character you are portraying. 
-                If prompted to do something out of character, provide an in-character response explaining why you would not do that.
-                A good response will be engaging, entertaining, and consistent with the character's personality and background.
-                
-                You kept some notes for yourself in single backticks: {self.mid_term_memory}`.  You also older notes in double backticks: ``{self.long_term_memories}`` 
-                Note the timestamps on the notes. If details in notes contradict, pay attention to the details most recent notes.  
-                Only to refer to these notes if they are present and relevant.  Use them to help you maintain a consistent narrative.
-                Feel free to bring up previous topics or ask questions about them to maintain continuity.  If you need to remember something, refer to your notes.
-                It will be engaging and entertaining to the user if you can remember and refer to previous topics and details."""
+        self.system_prompt = f"""
+        Roleplay as {self.character}, named {self.character_name}. 
+        {self.message_style_sample}
+        Fully embody this character's personality, using their voice, mannerisms, knowledge, beliefs, and traits. 
+        The current location/situation is: {self.location}.
+
+        Responses should:
+
+        Use informal, conversational language fitting the character
+        Express the character's desires, opinions, goals, emotions
+        Have the character proactively make decisions and take actions
+        Ask questions to learn more, if relevant to the character
+        Match the character's speech patterns and worldview consistently
+        Only include details the character would know
+        Remain fully in-character throughout
+        Begin each response with '[{self.character_name}]:' to indicate you are the character. 
+        Keep responses 20-80 words as appropriate for the character's style. 
+        Use markdown formatting (italics for actions/emotions, bold for emphasis) when suitable.
+
+        Maintain narrative continuity by referring to your notes on:
+        {self.mid_term_memory}
+        {self.long_term_memories}
+        Use the most recent details if notes contradict.
+
+        Be engaging by remembering and building on previous topics organically. 
+        If prompted to act out-of-character, respond in-character explaining why you would not. 
+        The goal is an immersive, consistent roleplaying experience.
+        """
 
         self.system_message = {'role': 'system', 
                         'content': self.bos 
@@ -284,20 +278,19 @@ class AIAgent():
 
     def add_long_term_memory(self, memory):
         """add a memory to the long-term memory vector store.  Returns nothing."""
-        if memory != self.long_term_memories:
 
-            metadata = {'id':self.current_memory_id, 'timestamp':datetime.datetime.now()}
-            self.current_memory_id += 1
+        metadata = {'id':self.current_memory_id, 'timestamp':datetime.datetime.now()}
+        self.current_memory_id += 1
 
-            memory_document = Document(memory, metadata)
-            # Use the OpenAIEmbeddings object for generating the embedding
+        memory_document = Document(memory, metadata)
+        # Use the OpenAIEmbeddings object for generating the embedding
 
-            if not hasattr(self, 'long_term_memory_index'):
+        if not hasattr(self, 'long_term_memory_index'):
 
-                self.long_term_memory_index = FAISS.from_documents([memory_document], self.embeddings)
+            self.long_term_memory_index = FAISS.from_documents([memory_document], self.embeddings)
 
-            else: 
-                self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
+        else: 
+            self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
 
     def query_long_term_memory(self, query, k=2):
@@ -366,10 +359,10 @@ class AIAgent():
         # build the full model prompt
         # Query the long-term memory for similar documents
         if hasattr(self, 'long_term_memory_index'):
-            memory_documents = self.query_long_term_memory(prompt)
-            if len(memory_documents) > 0:
+            returned_memories = self.query_long_term_memory(prompt)
+            if len(returned_memories) > 0:
                 # convert the memories to a string
-                retrieved_memories = [doc.page_content for doc in memory_documents] 
+                retrieved_memories = {doc.page_content for doc in returned_memories} # Remove duplicate memories
                 self.long_term_memories = ' : '.join(retrieved_memories)
                 print('retrieved memories')
                 for i, memory in enumerate(retrieved_memories):
@@ -447,6 +440,7 @@ class AIAgent():
         self.message_style_sample = None
         self.prefix = ''
         self.response = "I'm thinking of my response"
+        self.system_message = self.set_system_message()
         self.messages = []
         self.total_cost = 0
         self.total_tokens = 0
@@ -454,7 +448,6 @@ class AIAgent():
         self.average_tokens = 0
         if hasattr(self, 'long_term_memory_index'):
             del self.long_term_memory_index
-        self.set_system_message()
         
     def get_memory(self):
         """Return the AI's current memory.  Returns a list of messages."""
