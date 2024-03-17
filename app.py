@@ -13,11 +13,10 @@ except:
     session_id = 'default'
 
 try:
-    with open(os.path.join(os.pardir,'nsfw_filter_password.txt'), 'r') as f:
-        nsfw_password = f.read()
+    nsfw_password = os.getenv('CHAT_NSFW_PASSWORD')
 
 except Exception as e:
-    nsfw_password = st.secrets['NSFW_PASSWORD']
+    nsfw_password = st.secrets['CHAT_NSFW_PASSWORD']
 
 @st.cache_resource
 def get_agent(session_id, model='open-mistral-7b', ):
@@ -84,20 +83,30 @@ def set_nsfw():
 
 # Set the title
 st.title('Chat with a Character!')
-st.link_button('Donate to support my site', 'https://paypal.me/caellwyn?country.x=US&locale.x=en_US')
+
 
 
 # Disclaimer
 st.write('''This app allows you to chat with a character.  You can set the character description, save and load conversations, and clear the conversation history.
-         This character will have a very long memory, and should remember the conversation even after many messages.  It's not perfect, but better than most!
-         You can set the temperature and top_p through 'creativity' and 'freedom' respectively.  You can also choose from one of 3 models.  These can be changed on the fly.
-         \nAll responses are meant for entertainment only.  The character is not a real person and does not have real emotions or thoughts.
-         The character is not a substitute for professional advice.  Please do not share personal information with the character.
-         The character and developer are not responsible for any actions you take based on its responses.
-         Responses should not be considered factual in any way.
-         Please be aware that the character may say things that are not appropriate for all audiences.  
-         If you are under 18, please navigate away from this page.
-         Please use this app responsibly.  Enjoy!''')
+         This character will have a very long memory, and should remember details about you conversation even after many messages.  It's not perfect, but better than most!
+         You can set the temperature and top_p through 'creativity' and 'freedom' respectively.  You can also choose from one of 3 base models.  These can be changed on the fly.
+         \n * All responses are for entertainment only.  
+
+         \n * The character is not a real person and does not have real emotions or thoughts.
+
+         \n * While I do not keep any of your information after you navigate away or refresh the page, it is being sent to 3rd party servers for processing.  Please do not share any personal information with the character.
+
+         \n * The character is not a substitute for professional advice.
+
+         \n * The character and developer are not responsible for any actions you take based on its responses.
+
+         \n * Responses should not be considered factual in any way.
+
+         \n * While I take steps to try to filter model responses, I cannot guarantee that all responses will be appropriate.
+
+         \n * If you are under 18, please navigate away from this page.
+
+         \n * Please use this app responsibly and have lots of fun!  Enjoy!''')
 
 
 # Create the model settings
@@ -118,15 +127,14 @@ with st.container(border=True):
             key='model_name', on_change=change_model)
     
     # set the NSFW mode
-    user_nsfw_password = st.text_input('Password required for NSFW content', value=None, type='password', key='nsfw_password')
+    user_nsfw_password = st.text_input('Password required for unfiltered content', value=None, type='password', key='nsfw_password')
     if user_nsfw_password:
         if user_nsfw_password == nsfw_password:
             st.toggle('NSFW', value=False, key='nsfw', on_change=set_nsfw)
         else:
             st.session_state['nsfw'] = False
-            st.warning('The NSFW password is incorrect.  Please enter the correct password to enable NSFW mode.')
+            st.warning('The NSFW password is incorrect.  Please enter the correct password to enable unfiltered mode.')
     
-
 # get the agent
 if 'agent' not in st.session_state:
     st.session_state['agent'] = get_agent(session_id, model=st.session_state['model_name'])
@@ -175,7 +183,7 @@ with st.expander("Conversation", expanded=True):
     st.markdown('Feel free to change the location during the conversation as appropriate.  The AI may not notice the change until the next message, however.')
 
     # set the location of the conversation
-    location = st.text_input('The current location is...', value=st.session_state['agent'].location,
+    location = st.text_input('The current location or situation is...', value=st.session_state['agent'].location,
                         max_chars=50, help='Describe the location of the conversation', key='location',
                         on_change=set_location)
 
@@ -185,8 +193,16 @@ with st.expander("Conversation", expanded=True):
             query_agent(prompt, 
                         temperature=temperature,
                         top_p=top_p)
-            
 
+# add a donate button
+col1, col2 = st.columns(2)             
+
+with col1:
+    st.markdown(f':green[**Cost of this conversation so far is: ${st.session_state["agent"].total_cost:.5f}**]')
+
+with col2:
+    st.link_button('😊 Please Donate to support my site', 'https://paypal.me/caellwyn?country.x=US&locale.x=en_US',
+               type='primary', help='Please consider donating to support the site.  Thank you!',)
             
 # display the conversation history
 with st.container(height=500):
