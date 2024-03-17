@@ -8,7 +8,7 @@
 
 2. Characters lose their personality over time or tend to get stuck in repetitious response loops.
 
-## Proble 1: Memory
+## Problem 1: Short Memories
 ### Solution
 The Agent is provided with a multi-tiered "memory", or dynamically changing system prompt, which includes levels of information from previous conversation turns ranging from very specific for the most recent to more summarized for most distance topics and information.
 
@@ -35,7 +35,7 @@ The model is able to accurately recall information from earlier in the conversat
 **Next Steps**
 I'd like to get the model to more proactively reference previous events.  It is mostly successful in recall if I directly ask it questions about earlier conversations, but rarely spontaneously references previous events.  It lives very much in the moment.  I'm working on prompt engineering to generate this behavior, but it's still in the works.
 
-## Personality/Conversation Style Degradation
+## Problem 2: Personality/Conversation Style Degradation over Long Conversations
 
 I noticed that while the characters often started off strong with a unique speaking style, over time their style faded to be very bland and sound like their base AI.  I experimented with a few solutions, including having it write it's notice in character.  However, this wasted a lot of token in the memory by creating less token-dense notes.
 
