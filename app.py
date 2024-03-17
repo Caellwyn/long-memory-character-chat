@@ -13,10 +13,10 @@ except:
     session_id = 'default'
 
 try:
-    nsfw_password = os.getenv('CHAT_NSFW_PASSWORD')
-
-except Exception as e:
+    
     nsfw_password = st.secrets['CHAT_NSFW_PASSWORD']
+except Exception as e:
+    nsfw_password = os.getenv('CHAT_NSFW_PASSWORD')
 
 @st.cache_resource
 def get_agent(session_id, model='open-mistral-7b', ):
