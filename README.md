@@ -4,6 +4,11 @@
  [Check it out here!](https://long-memory-character-chat.streamlit.app/)
 
 # Problem Statements
+
+I've experimented (and enjoyed) many different character role-playing ai services recently.  My favorites are [Character.ai](https://beta.character.ai/), [Doppel.ai](https://beta.dopple.ai/), and [Poly.ai by Cloud Whale Interactive Technology](https://play.google.com/store/apps/dev?id=5239838313764237888&hl=en_US&gl=US&pli=1) (not to be confused with poly.ai the customer service chatbot developers)
+
+However, each of these systems have limitations that can be aggravating.  I've tried to address of a few of them in this project.
+
 1. Character based chats are great and engrossing, but they have short memories.  They often lose track of the setting, situation, and important prior events.  While using longer context windows can help this, tokens are expensive!  How can we give a character a long memory, but limit the number of tokens sent for each completion?
 
 2. Characters lose their personality over time or tend to get stuck in repetitious response loops.
