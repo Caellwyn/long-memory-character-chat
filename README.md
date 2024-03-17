@@ -8,6 +8,8 @@
 
 2. Characters lose their personality over time or tend to get stuck in repetitious response loops.
 
+3. Characters are static once created
+
 ## Problem 1: Short Memories
 ### Solution
 The Agent is provided with a multi-tiered "memory", or dynamically changing system prompt, which includes levels of information from previous conversation turns ranging from very specific for the most recent to more summarized for most distance topics and information.
@@ -33,7 +35,9 @@ When memories are stored, they are stored with timestamps and when they are reca
 The model is able to accurately recall information from earlier in the conversation most of the time.  Vector store searches are generally successful in retrieving the relevant information, but the model does not always actually make use of the information in their responses.  Generally, though, I've been pleased with the results.
 
 **Next Steps**
-I'd like to get the model to more proactively reference previous events.  It is mostly successful in recall if I directly ask it questions about earlier conversations, but rarely spontaneously references previous events.  It lives very much in the moment.  I'm working on prompt engineering to generate this behavior, but it's still in the works.
+- I'd like to get the model to more proactively reference previous events.  It is mostly successful in recall if I directly ask it questions about earlier conversations, but rarely spontaneously references previous events.  It lives very much in the moment.  I'm working on prompt engineering to generate this behavior, but it's still in the works.
+
+- I'm also considering using named-entity recognition to allow the agent to build profiles of characters or places and store information relevant to specific entities.  This would help the model organize the information by entity rather than just be conversation snapshots.
 
 ## Problem 2: Personality/Conversation Style Degradation over Long Conversations
 
@@ -43,3 +47,24 @@ Instead, I store a sample of the first response the model provides as an example
 
 **Next Steps**
 While the tone of the messages is consistent, I'd like to give the models even stronger, more nuanced and consistent personalities.  I suspect this may require fine-tuning.  
+
+## Problem 3: Static Characters
+
+In many LLM role-playing systems, characters are static once created.  However, in my implementation, character descriptions and even names can be changed on the fly.  Of specific usefulness is the ability to change the location and user name.
+
+**Character Descriptions**
+Sometimes you want your change by recent events or have their goals or motivations evolve over time.  This is easy to do by directly adjusting the character description on the fly.
+
+**Location**
+Conversations and role-playing can often move around in the imaginary world.  You may go from a town to a dungeon, or a dorm to a coffee shop, or home to work.  My site allows you to change the location of the conversation on the fly.
+
+**User Name**
+Another challenge with most character role-playing systems is including multiple characters.  In my system you can change the name of the character you are speaking for on the fly.  This lets you simulate multiple characters in a conversation or situation.  
+
+**Character Name**
+Changing this is actually not very useful.  It doesn't work to get the character to play different characters and will cause confusion in when the model tries to relate current conversations to previous conversation summaries.
+
+**Next Steps**
+- I haven't figured out how to have the agent successfully play multiple characters.  It's a daunting task and in general I've seen models struggle with this.  Character.AI recently implemented this, but I think they actually have 2 fully separate agents separately responding.  This is an idea I could see about implementing at some later date.  It's not a priority at this point, though.
+
+
