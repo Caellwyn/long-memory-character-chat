@@ -136,11 +136,9 @@ with st.container(border=True):
                         'meta-llama/Llama-2-7b-chat-hf',
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
-                        'lmsys/vicuna-13b-v1.5',
-                        'Gryphe/MythoMax-L2-13b',
-                        'Austism/chronos-hermes-13b',
+                        
                         'WizardLM/WizardLM-13B-V1.2',
-                        'Undi95/ReMM-SLERP-L2-13B',
+                        
                         'gpt-3.5-turbo-0125'],
                 index=10,
                 key='model_name', on_change=change_model)
