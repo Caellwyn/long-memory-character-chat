@@ -9,11 +9,11 @@ I've experimented (and enjoyed) many different character role-playing ai service
 
 However, each of these systems have limitations that can be aggravating.  I've tried to address of a few of them in this project.
 
-1. Character based chats are great and engrossing, but they have short memories.  They often lose track of the setting, situation, and important prior events.  While using longer context windows can help this, tokens are expensive!  How can we give a character a long memory, but limit the number of tokens sent for each completion?
+1. Character based chats are great and engrossing, but they have short memories.  They often lose track of the setting, situation, and important prior events.  While using longer context windows can help this, tokens are expensive!  How can we give a character a long memory, but limit the number of tokens sent for each completion?  Doppel.ai, however is much better about this than the rest.  Their characters have longer memories.
 
-2. Characters lose their personality over time or tend to get stuck in repetitious response loops.
+2. Characters lose their personality over time or tend to get stuck in repetitious response loops.  Some services are better than others with this, but I've seen it happen to some extent with all of them.
 
-3. Characters are static once created
+3. Characters are static once created.  Some services let you add additional 'memories' to a character, but I haven't yet found one that allows you to change the character's base personality without restarting the conversation.
 
 ## Problem 1: Short Memories
 ### Solution
