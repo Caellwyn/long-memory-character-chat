@@ -108,23 +108,42 @@ st.write('''This app allows you to chat with a character.  You can set the chara
 
          \n * Please use this app responsibly and have lots of fun!  Enjoy!''')
 
-
+col_temp, col_model = st.columns(2)
 # Create the model settings
+
 with st.container(border=True):
     # set the temperature for the model
     st.markdown('#### Model Settings')
-    temperature = st.slider('Creativity', min_value=0.1, max_value=1.0, step=0.1, value=0.1)
-    top_p = st.slider('Freedom', min_value=0.0, step=.05, max_value=1.0, value=0.0)
-    # set the top_p value
-    top_p = 1 - top_p
-    if top_p == 1 or 0:
-        top_p = None
+    with col_temp:
+        temperature = st.slider('Creativity', min_value=0.1, max_value=1.0, step=0.1, value=0.1)
+        top_p = st.slider('Freedom', min_value=0.0, step=.05, max_value=1.0, value=0.0)
+        # set the top_p value
+        top_p = 1 - top_p
+        if top_p == 1 or 0:
+            top_p = None
 
     # set the model
-    st.radio("Model to use (in Ascending Order of Cost)", horizontal=True,
-            options=['open-mistral-7b', 'gpt-3.5-turbo-0125', 'open-mixtral-8x7b'],
-            index=0,
-            key='model_name', on_change=change_model)
+    with col_model:
+        st.radio("Model to use (In ascending order of cost)", horizontal=False,
+                options=['openchat/openchat-3.5-1210',
+                         'Qwen/Qwen1.5-7B-Chat',
+                         'togethercomputer/StripedHyena-Nous-7B',
+                        'NousResearch/Nous-Capybara-7B-V1p9',
+                        'google/gemma-7b-it',
+                        'lmsys/vicuna-7b-v1.5',
+                        'mistralai/Mistral-7B-Instruct-v0.1',
+                        'NousResearch/Nous-Hermes-llama-2-7b',
+                        'meta-llama/Llama-2-7b-chat-hf',
+                        'NousResearch/Nous-Hermes-Llama2-13b',
+                        'meta-llama/Llama-2-13b-chat-hf',
+                        'lmsys/vicuna-13b-v1.5',
+                        'Gryphe/MythoMax-L2-13b',
+                        'Austism/chronos-hermes-13b',
+                        'WizardLM/WizardLM-13B-V1.2',
+                        'Undi95/ReMM-SLERP-L2-13B',
+                        'gpt-3.5-turbo-0125'],
+                index=10,
+                key='model_name', on_change=change_model)
     
     # set the NSFW mode
     user_nsfw_password = st.text_input('Password required for unfiltered content', value=None, type='password', key='nsfw_password')

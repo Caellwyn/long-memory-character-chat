@@ -1,23 +1,10 @@
 import streamlit as st
 import openai
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
 from langchain_openai import OpenAIEmbeddings
-from langchain_mistralai import MistralAIEmbeddings
 from langchain_community.vectorstores import FAISS
-import os, datetime
-import pickle
+import os, datetime, pickle
+from pydantic import BaseModel, Field
 
-# Load the OpenAI API key from the environment variables
-try:
-    mistral_api_key = os.getenv('MISTRAL_API_KEY')
-except Exception as e:
-    mistral_api_key=st.secrets['MISTRAL_API_KEY']
-
-try:
-    openai.api_key = os.getenv('OPENAI_API_KEY')
-except:
-    openai.api_key = st.secrets['OPENAI_API_KEY']
     
 class Document:
     """Document class for storing text and metadata together.  This is used for storing long-term memory."""
@@ -25,6 +12,13 @@ class Document:
     def __init__(self, content, metadata):
         self.page_content = content
         self.metadata = metadata
+
+class SummarySchema(BaseModel):
+    response: str = Field(description="response to user prompt")
+    summary: str = Field(description="summary of the conversation")
+
+class NoSummarySchema(BaseModel):
+    response: str = Field(description="response to user prompt")
 
 class AIAgent():
     """AIAgent class, which acts as the character to converse with
@@ -40,10 +34,7 @@ class AIAgent():
         self.set_summary_model(summary_model)
 
         # Initialize the embeddings model
-        if 'gpt' in embedding_model:
-            self.embeddings = OpenAIEmbeddings(model='text-embedding-3-small')
-        elif 'mistral' in embedding_model:
-            self.embeddings = MistralAIEmbeddings(api_key=mistral_api_key)
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-3-small')
 
         # Set the character for the AI to role-play as
         self.character = 'A old emu with a tale to tell.  You desperately want someone to listen.'
@@ -81,12 +72,12 @@ class AIAgent():
 
         ## How many messages are summarized: 
         ## must be even!
-        self.mid_term_memory_length = 6
+        self.mid_term_memory_length = 4
 
         ## How long short-term memory can grow: 
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 10
+        self.max_short_term_memory_length = 8
         
         ## How much overlap between each summarized mid-term memory: 
         ## must be less than mid_term_memory_length
@@ -133,7 +124,7 @@ class AIAgent():
         Only include details the character would know
         Remain fully in-character throughout
         Begin each response with '[{self.character_name}]:' to indicate you are the character. 
-        Keep responses 20-80 words as appropriate for the character's style. 
+        Keep responses 50 to 120 words as appropriate for the character's style. 
         Use markdown formatting (italics for actions/emotions, bold for emphasis) when suitable.
 
         Maintain narrative continuity by referring to your notes on:
@@ -152,28 +143,44 @@ class AIAgent():
                                 + self.system_prompt
                                 + self.end_ins + ' '}
     
-    def set_model(self, model='open-mistral-7b'):
+    def set_model(self, model='gpt-3.5-turbo-0125'):
         """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
         self.model = model
         if 'gpt' in self.model:
-            self.agent = openai.OpenAI()
-        elif 'mistral' in self.model or 'mixtral' in self.model:
-            self.agent = MistralClient(api_key=mistral_api_key)
+            try:
+                api_key = os.getenv('OPENAI_API_KEY')
+            except:
+                api_key = st.secrets['OPENAI_API_KEY']
+            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
+        else:
+            try:
+                api_key = os.getenv('TOGETHER_API_KEY')     
+            except:
+                api_key = st.secrets['TOGETHER_API_KEY']
+            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
 
-    def set_summary_model(self, summary_model='open-mistral-7b'):
+
+    def set_summary_model(self, summary_model='gpt-3.5-turbo-0125'):
         """Change the model the AI uses to summarize conversations.  Defaults to: 'open-mistral-7b'"""
         self.summary_model = summary_model
         if 'gpt' in self.summary_model:
-            self.summary_agent = openai.OpenAI()
-        elif 'mistral' in self.summary_model or 'mixtral' in self.summary_model:
-            self.summary_agent = MistralClient(api_key=mistral_api_key)
+            try:
+                api_key = os.getenv('OPENAI_API_KEY')
+            except:
+                api_key = st.secrets['OPENAI_API_KEY']
+            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
+        else:
+            try:
+                api_key = os.getenv('TOGETHER_API_KEY')     
+            except:
+                api_key = st.secrets['TOGETHER_API_KEY']
+            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
     
     def set_character(self, character='a friendly old man.'):
         """Change the character the AI is role-playing as.  Defaults to: 'A friendly old man.'"""
 
         # Set the character for the AI to role-play as
         self.character = character
-        self.system_message = self.set_system_message()
 
     def set_location(self, location='The Australian outback'):
         """Change the location the AI is role-playing in.  Defaults to: 'The Australian outback'"""
@@ -211,18 +218,10 @@ class AIAgent():
 
         # if the short-term memory is too long, summarize it, replace mid-term memory, and add it to the long term memory
             
-        self.prefix = f""" Respond in 50 to 80 words. Stay in character and be sure to maintain your personality and manner of speaking: """
+        # self.prefix = f""" Respond in 50 to 150 words. Stay in character and be sure to maintain your personality and manner of speaking: """
 
-    def stringify_memory(self, memory):
-        """Convert a memory list to a string.  Returns the string."""
 
-        # convert a memory list to a string
-        memory_string = ''
-        for message in memory:
-            memory_string += message['role'] + ': ' + message['content'] + ' '
-        return memory_string
-
-    def summarize_memories(self, max_tokens=150):
+    def summarize_memories(self, max_tokens=150, temperature=0, top_p=None):
         """Summarize the short-term memory and add it to the mid-term memory.  
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
@@ -249,19 +248,13 @@ class AIAgent():
         summary_messages = self.short_term_memory[offset:self.mid_term_memory_length + offset]
         summary_messages.append(summary_prompt)
         # Choose the model to use for summarization and summarize the conversation
-        if 'gpt' in self.summary_model:
-            summary = self.summary_agent.chat.completions.create(
-                model=self.summary_model,
-                messages=summary_messages, # this is the conversation history
-                temperature=0, # this is the degree of randomness of the model's output
-                max_tokens=max_tokens) 
-        elif 'mistral' in self.summary_model or 'mixtral' in self.summary_model:
-            messages=[ChatMessage(role=message["role"], content=message["content"]) for message in summary_messages]
-            summary = self.summary_agent.chat(
-                model=self.summary_model,
-                messages=messages,
-                max_tokens=max_tokens
-                )
+        summary = self.agent.chat.completions.create(
+            model=self.summary_model,
+            messages=self.messages, # this is the conversation history
+            temperature=temperature, # this is the degree of randomness of the model's output
+            max_tokens=max_tokens,
+            top_p=top_p,
+            )   
         print('LATEST SUMMARY: ', summary.choices[0].message.content)
         # add cost of message to total cost
         self.count_cost(summary, self.model, summary=True)
@@ -318,20 +311,19 @@ class AIAgent():
         elif model.startswith('gpt-4'):
             input_cost = 0.01 / 1000
             output_cost = 0.03 / 1000
-        elif model.startswith('open-mistral-7b'):
-            input_cost = 0.00025 / 1000
-            output_cost = 0.00025 / 1000
-        elif model.startswith('open-mixtral-8x7b'):
-            input_cost = 0.0007 / 1000
-            output_cost = 0.0007 / 1000
-        elif model.startswith('text-embedding-3-small'):
-            input_cost = 0.000002 / 1000
-            output_cost = 0.000002 / 1000
-        elif model.startswith('text-embedding-3-large'):
-            input_cost = 0.00013 / 1000
-            output_cost = 0.00013 / 1000
+        elif '7b' in model.lower() and '8x7b' not in model:
+            input_cost = 0.0002 / 1000
+            output_cost = 0.0002 / 1000
+        elif 'llama-2-13b' in model.lower():
+            input_cost = 0.000225 / 1000
+            output_cost = 0.000225 / 1000
+        elif '13b' in model.lower():
+            input_cost = 0.0003 / 1000
+            output_cost = 0.0003 / 1000
         else:
             print('Model not recognized')
+            input_cost = 0
+            output_cost = 0
         
         # determine the length of inputs and outputs
         input_tokens = result.usage.prompt_tokens
@@ -349,7 +341,7 @@ class AIAgent():
         return lastest_cost
 
 
-    def query(self, prompt, temperature=.3, top_p=None, max_tokens=100):
+    def query(self, prompt, temperature=.3, top_p=None, max_tokens=200):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
@@ -379,22 +371,13 @@ class AIAgent():
         self.messages.append({'role':'user', 'content': self.start_ins + self.prefix + prompt + self.end_ins})
 
         # Query the model through the API
-        if 'gpt' in self.model:
-            result = self.agent.chat.completions.create(
-                model=self.model,
-                messages=self.messages, # this is the conversation history
-                temperature=temperature, # this is the degree of randomness of the model's output
-                max_tokens=max_tokens,
-                top_p=top_p
-                 )
-        elif 'mistral' in self.model or 'mixtral' in self.model:
-            result = self.agent.chat(
-                model=self.model,
-                messages=[ChatMessage(role=message["role"], content=message["content"]) for message in self.messages],
-                temperature=temperature,
-                top_p=top_p,
-                max_tokens=max_tokens,
-                safe_prompt=not self.nsfw)
+        result = self.agent.chat.completions.create(
+            model=self.model,
+            messages=self.messages, # this is the conversation history
+            temperature=temperature, # this is the degree of randomness of the model's output
+            max_tokens=max_tokens,
+            top_p=top_p
+                )
 
         # Check For NSFW Content
         if not self.nsfw:
