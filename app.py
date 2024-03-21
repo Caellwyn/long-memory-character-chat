@@ -158,8 +158,9 @@ with st.container(border=True):
                         'meta-llama/Llama-2-7b-chat-hf',
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
-                        'Gryphe/MythoMax-L2-13b',
+                        
                         'WizardLM/WizardLM-13B-V1.2',
+                        
                         'gpt-3.5-turbo-0125'],
                 index=0, format_func=format_model_label,
                 key='model_name', on_change=change_model)
