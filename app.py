@@ -259,7 +259,7 @@ st.sidebar.button('Save Conversation', on_click=save_character)
 # if there is a saved conversation, add buttons to reload and download the character and conversation
 if st.session_state['pickled_agent']:
     # add a button to reload the character and conversation
-    st.sidebar.button('Reload Conversation', on_click=load_character, args=[st.session_state['pickled_agent']])
+    st.sidebar.button('Reload From Save', on_click=load_character, args=[st.session_state['pickled_agent']])
 
     # add a button to download the character and conversation
     st.sidebar.download_button(
@@ -273,7 +273,7 @@ with st.sidebar.form('upload_character', clear_on_submit=True):
     uploaded_file = st.file_uploader(":floppy_disk: **Upload a saved conversation**", 
                                      type=['pkl'], accept_multiple_files=False,)
     
-    submit_button = st.form_submit_button('Upload')
+    submit_button = st.form_submit_button('Load Uploaded Character')
     if submit_button:
         if uploaded_file is not None:
             pkl = uploaded_file.getvalue()

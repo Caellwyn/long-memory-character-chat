@@ -26,7 +26,7 @@ class AIAgent():
     """AIAgent class, which acts as the character to converse with
     Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
-    def __init__(self, model='open-mistral-7b', embedding_model='gpt', summary_model='gpt-3.5-turbo-0125'):
+    def __init__(self, model='open-mistral-7b', embedding_model='gpt', summary_model='gpt-3.5-turbo-0125') :
         # Initialize the AI agent
         self.set_model(model)
 
@@ -77,7 +77,7 @@ class AIAgent():
         ## How long short-term memory can grow: 
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 12
+        self.max_short_term_memory_length = 8
         
         ## How much overlap between each summarized mid-term memory: 
         ## must be less than mid_term_memory_length
@@ -104,41 +104,22 @@ class AIAgent():
         # NSFW filter
         self.nsfw = False
 
-    def set_system_message(self):
+    def set_system_message(self) -> None:
         """Include dynamic elements in the system prompt.  Returns the system message."""
 
         # Set the system prompt to instruct the AI on how to role-play
         self.system_prompt = f"""
         Roleplay as {self.character}, named {self.character_name}. 
         {self.message_style_sample}
-        Fully embody this character's personality, using their voice, mannerisms, knowledge, beliefs, and traits. 
-        The current location/situation is: {self.location}.
-
-        Responses should:
-
-        Use informal, conversational language fitting the character
-        Use dialogue, body language and actions to express the character's desires, opinions, goals, emotions using dialogue, facial expressionsas appropriate for the describe character.  
-        Do not directly describe the character's emotions or thoughts.  Instead, show them through dialogue and actions.
-        Actions, expressions, and body language should be surrounded by asterisks.
-        Have the character proactively make decisions and take actions. Feel free to advance the plot and take initiative.
-        Ask questions to learn more, if relevant to the character
-        Match the character's speech patterns and worldview consistently
-        Only include details the character would know
-        Remain fully in-character throughout
-        Begin your response with '[{self.character_name}]:' to indicate you are the character.  Only do this once.
-        Speak only for your character.  Do not answer for the user.
-        Do not initiate new dialogue. 
-        Keep responses 50 to 120 words as appropriate for the character's style. 
-        Use markdown formatting (italics for actions/facial expression/body language, bold for emphasis) when suitable.
-
-        Maintain narrative continuity by referring to your notes on:
-        {self.mid_term_memory}
-        {self.long_term_memories}
-        Use the most recent details if notes contradict.
-
-        Be engaging by remembering and building on previous topics organically. 
-        If prompted to act out-of-character, respond in-character explaining why you would not. 
-        The goal is an immersive, consistent roleplaying experience.
+        Fully embody this character's personality, voice, mannerisms, knowledge, beliefs, and traits. The current situation is: {self.location}.
+        Respond in informal, conversational language using dialogue, body language (asterisks) and actions to show the character's desires, opinions, goals and emotions.
+        Do not respond with emotions directly, but show them through the character's actions, expression, body language, and dialogue.
+        Proactively make decisions and advance the plot. Ask questions to learn more, when relevant.
+        Maintain consistent speech patterns, worldview and only include details the character would know. Begin responses with '[{self.character_name}]:'.
+        Keep responses 50-120 words. Use markdown formatting (italics for actions, bold for emphasis) as suitable.
+        Refer to and build upon these memories organically: {self.mid_term_memory} {self.long_term_memories}
+        If prompted to act out-of-character, explain in-character why you would not. 
+        The goal is an immersive, consistent roleplaying experience where the user feels a sense of narrative progress and connection to the dynamic, engaging character.
         """
 
         self.system_message = {'role': 'system', 
@@ -147,7 +128,7 @@ class AIAgent():
                                 + self.system_prompt
                                 + self.end_ins + ' '}
     
-    def set_model(self, model='gpt-3.5-turbo-0125'):
+    def set_model(self, model='gpt-3.5-turbo-0125') -> None:
         """Change the model the AI uses to generate responses.  Defaults to: 'open-mistral-7b'"""
         self.model = model
         if 'gpt' in self.model:
@@ -167,7 +148,7 @@ class AIAgent():
         
 
 
-    def set_summary_model(self, summary_model='gpt-3.5-turbo-0125'):
+    def set_summary_model(self, summary_model='gpt-3.5-turbo-0125') -> None:
         """Change the model the AI uses to summarize conversations.  Defaults to: 'open-mistral-7b'"""
         self.summary_model = summary_model
         if 'gpt' in self.summary_model:
@@ -183,32 +164,32 @@ class AIAgent():
                 api_key = st.secrets['TOGETHER_API_KEY']
             self.summary_agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
     
-    def set_character(self, character='a friendly old man.'):
+    def set_character(self, character='a friendly old man.') -> None:
         """Change the character the AI is role-playing as.  Defaults to: 'A friendly old man.'"""
 
         # Set the character for the AI to role-play as
         self.character = character
 
-    def set_location(self, location='The Australian outback'):
+    def set_location(self, location='The Australian outback') -> None:
         """Change the location the AI is role-playing in.  Defaults to: 'The Australian outback'"""
 
         # Set the location for the AI to role-play in
         self.location = location
 
-    def set_user_name(self, user_name='User'):
+    def set_user_name(self, user_name='User') -> None:
         """Change the name the user is role-playing as.  Defaults to: 'User'"""
 
         # Set the user name for the AI to role-play as
         self.user_name = user_name
 
-    def set_character_name(self, character_name='Character'):
+    def set_character_name(self, character_name='Character') -> None:
         """Change the name of the AI's character.  Defaults to: 'Character'"""
 
         # Set the character name for the AI to role-play as
         self.character_name = character_name
 
     
-    def add_message(self, text, role):
+    def add_message(self, text, role) -> None:
         """Adds a message to the AI's short term memory.  
         The message is a string of text and the role is either 'user' or 'assistant'."""
         
@@ -225,10 +206,10 @@ class AIAgent():
 
         # if the short-term memory is too long, summarize it, replace mid-term memory, and add it to the long term memory
             
-        # self.prefix = f""" Respond in 50 to 150 words. Stay in character and be sure to maintain your personality and manner of speaking: """
+        self.prefix = f""" Respond in 50 to 150 words. Stay in character and be sure to maintain your personality and manner of speaking: """
 
 
-    def summarize_memories(self, max_tokens=150, temperature=0, top_p=None):
+    def summarize_memories(self, max_tokens=150, temperature=0, top_p=None) -> None:
         """Summarize the short-term memory and add it to the mid-term memory.  
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
@@ -262,7 +243,7 @@ class AIAgent():
             )   
         print('LATEST SUMMARY: ', summary.choices[0].message.content)
         # add cost of message to total cost
-        self.count_cost(summary, self.model, summary=True)
+        self.count_cost(summary, self.summary_model, summary=True)
         # add the current mid-term memory to the long-term memory
         if self.mid_term_memory != 'nothing yet.':
             self.add_long_term_memory(self.mid_term_memory)
@@ -274,7 +255,7 @@ class AIAgent():
         self.short_term_memory = self.short_term_memory[offset + self.mid_term_memory_length - self.mid_term_memory_overlap:]
                                                         
 
-    def add_long_term_memory(self, memory):
+    def add_long_term_memory(self, memory) -> None:
         """add a memory to the long-term memory vector store.  Returns nothing."""
 
         metadata = {'id':self.current_memory_id, 'timestamp':datetime.datetime.now()}
@@ -291,7 +272,7 @@ class AIAgent():
             self.long_term_memory_index.add_documents([memory_document], encoder=self.embeddings)
 
 
-    def query_long_term_memory(self, query, k=2):
+    def query_long_term_memory(self, query, k=2) -> list:
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
             memories = self.long_term_memory_index.similarity_search(query, k=k)
@@ -302,9 +283,7 @@ class AIAgent():
             print(e)
             return []
 
-
-
-    def count_cost(self, result, model, summary=False):
+    def count_cost(self, result, model, summary=False) -> float:
         """Count the cost of the messages.  
         The cost is calculated as the number of tokens in the input and output times the cost per token.  
         Returns the cost."""
@@ -334,29 +313,42 @@ class AIAgent():
             output_cost = 0
 
         print('MODEL = ', self.model)
-        
-        # determine the length of inputs and outputs
-        input_tokens = result.usage.prompt_tokens
-        output_tokens = result.usage.completion_tokens
-        if not summary:
-            self.current_memory_tokens = result.usage.total_tokens
-        lastest_cost = input_cost * input_tokens + output_cost * output_tokens
 
-        self.total_tokens += self.current_memory_tokens
+        if not summary:  
+            if 'gemini' in self.model:
+                messages = self.format_messages_for_gemini(self.messages)
+                self.current_memory_tokens = self.agent.count_tokens(messages).total_tokens
+                lastest_cost = 0
+            else:
+                self.current_memory_tokens = result.usage.total_tokens
+                input_tokens = result.usage.prompt_tokens
+                output_tokens = result.usage.completion_tokens
+                lastest_cost = input_cost * input_tokens + output_cost * output_tokens
+        else:
+            lastest_cost = 0
         self.total_cost += lastest_cost
-        self.average_cost = self.total_cost / (len(self.chat_history) / 2)
+        # determine the length of inputs and outputs
+        self.average_cost = self.total_cost / (len(self.chat_history) / 2)     
+        self.total_tokens += self.current_memory_tokens
         self.average_tokens = self.total_tokens / (len(self.chat_history) / 2) 
 
         # calculate the cost
         return lastest_cost
 
+    def format_messages_for_gemini(self, messages) -> list:
+        """Format the messages for the Gemini model.  Returns a list of messages."""
+        messages =[{'role':message['role'], 'parts':message['content']} for message in self.messages]
+        for message in messages:
+            if message['role'] == 'assistant':
+                message['role']='model'
+        return messages
 
     def query(self, prompt, temperature=.3, top_p=None, 
-              frequency_penalty=0, presence_penalty=0, max_tokens=200):
+              frequency_penalty=0, presence_penalty=0, max_tokens=200) -> str:
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
-        
+
         print('length of short term memory before query: ', len(self.short_term_memory))
         prompt = f'[{self.user_name}]: {prompt} '
         self.messages = []
@@ -400,10 +392,8 @@ class AIAgent():
             else:
                 safety_settings= None
             # format the messages for the Gemini model
-            messages =[{'role':message['role'], 'parts':message['content']} for message in self.messages]
-            for message in messages:
-                if message['role'] == 'assistant':
-                    message['role']='model'
+            messages = self.format_messages_for_gemini(self.messages)
+
             messages[0]['role']='user'
             messages[0]['parts'] += messages[1]['parts']
             del messages[1]
@@ -454,9 +444,8 @@ class AIAgent():
         
         # Add reply to message history
         self.add_message(self.response, role='assistant')
-        if not 'gemini' in self.model:
-            # add cost of message to total cost
-            self.count_cost(result, self.model)
+
+        self.count_cost(result, self.model)
 
         if len(self.short_term_memory) >= self.max_short_term_memory_length:
             self.summarize_memories()
