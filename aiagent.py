@@ -72,12 +72,12 @@ class AIAgent():
 
         ## How many messages are summarized: 
         ## must be even!
-        self.mid_term_memory_length = 4
+        self.mid_term_memory_length = 6
 
         ## How long short-term memory can grow: 
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 8
+        self.max_short_term_memory_length = 12
         
         ## How much overlap between each summarized mid-term memory: 
         ## must be less than mid_term_memory_length
@@ -117,7 +117,8 @@ class AIAgent():
         Responses should:
 
         Use informal, conversational language fitting the character
-        Express the character's desires, opinions, goals, emotions using dialogue, facial expressions, body language and actions as appropriate for the describe character.  
+        Use dialogue, body language and actions to express the character's desires, opinions, goals, emotions using dialogue, facial expressionsas appropriate for the describe character.  
+        Do not directly describe the character's emotions or thoughts.  Instead, show them through dialogue and actions.
         Actions, expressions, and body language should be surrounded by asterisks.
         Have the character proactively make decisions and take actions. Feel free to advance the plot and take initiative.
         Ask questions to learn more, if relevant to the character
@@ -235,14 +236,12 @@ class AIAgent():
         summary_prompt = {'role':'user', 'content':f'''
                         You are {self.character_name}'s notetaker.  It's your job to help {self.character_name} remember important things in a story.
                         {self.character_name} is a bit forgetful, so you need to help them keep track of the conversation.
-                        Your previous notes are here in backticks:`{self.mid_term_memory}` 
-                        update them them anything has has changed in the conversation above.  
-                        Any text in your previous notes that is contradicted by text in the conversation should be updated.
-                        It's most important to keep track of any changes in location, circumstances, or relationships.
-                        Also try to capture:
-                        - Any significant events and their outcomes, as well as {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed.
-                        Your notes don't have to be complete sentences, but they should be clear and concise.
-                        Keep the notes as brief as possible and no more than 100 words.
+                        Use bullet points to keep track of highlights, especially key details, descriptions of circumstances, important events, and relationships.
+                        Also record {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed.
+                        Use your previous notes as a basis and update as necessary.
+                        Your previous notes are here in backticks:`{self.mid_term_memory}`  
+                        Any text in your previous notes that is contradicted by text in the current conversation should be updated.
+                        Your notes should be clear and concise and no more than 100 words
                         '''}
            
         # Add the short-term memory to the summary, ensures a 'user' role message is first.
@@ -256,7 +255,7 @@ class AIAgent():
         # Choose the model to use for summarization and summarize the conversation
         summary = self.summary_agent.chat.completions.create(
             model=self.summary_model,
-            messages=self.messages, # this is the conversation history
+            messages=summary_messages, # this is the conversation history
             temperature=temperature, # this is the degree of randomness of the model's output
             max_tokens=max_tokens,
             top_p=top_p,
@@ -357,6 +356,7 @@ class AIAgent():
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
+        
         print('length of short term memory before query: ', len(self.short_term_memory))
         prompt = f'[{self.user_name}]: {prompt} '
         self.messages = []
@@ -414,7 +414,7 @@ class AIAgent():
                 content = result.text
             except:
                 print(result)
-                return f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
+                content = f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
         else:    
             result = self.agent.chat.completions.create(
                 model=self.model,

@@ -85,19 +85,17 @@ def set_nsfw():
         st.session_state['agent'].nsfw = st.session_state['nsfw']
 
 def format_model_label(model):
-    labels = [('gemini-pro','gemini-pro'),
+    labels = [('gemini-pro (free, but sometimes doesn\'t respond)','gemini-pro'),
             ('openchat 3.5','openchat/openchat-3.5-1210'),
-                ('Qwen1.5 7b','Qwen/Qwen1.5-7B-Chat'),
-                ('StripedHyena Nous 7b','togethercomputer/StripedHyena-Nous-7B'),
+            ('Qwen1.5 7b','Qwen/Qwen1.5-7B-Chat'),
+            ('StripedHyena Nous 7b','togethercomputer/StripedHyena-Nous-7B'),
             ('Nous Capybara 7b','NousResearch/Nous-Capybara-7B-V1p9'),
             ('Vicuna 7b v1.5','lmsys/vicuna-7b-v1.5'),
             ('Mistral 7B Instruct v0.1','mistralai/Mistral-7B-Instruct-v0.1'),
             ('Meta Llama 2 7b','meta-llama/Llama-2-7b-chat-hf'),
             ('Nous Hermies Llama 2 13b','NousResearch/Nous-Hermes-Llama2-13b'),
             ('Meta Llama 2 13b','meta-llama/Llama-2-13b-chat-hf'),
-            ('MythoMax L2 13b','Gryphe/MythoMax-L2-13b'),
             ('WizardLM 13b v1.2','WizardLM/WizardLM-13B-V1.2'),
-            ('ReMM SLERP L2 13b','Undi95/ReMM-SLERP-L2-13B'),
             ('GPT 3.5 Turbo','gpt-3.5-turbo-0125')]
     for label in labels:
         if model == label[1]:
@@ -158,9 +156,8 @@ with st.container(border=True):
                         'meta-llama/Llama-2-7b-chat-hf',
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
-                        
+                        'Gryphe/MythoMax-L2-13b',
                         'WizardLM/WizardLM-13B-V1.2',
-                        
                         'gpt-3.5-turbo-0125'],
                 index=0, format_func=format_model_label,
                 key='model_name', on_change=change_model)
