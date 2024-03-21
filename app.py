@@ -13,7 +13,6 @@ except:
     session_id = 'default'
 
 try:
-    
     nsfw_password = st.secrets['CHAT_NSFW_PASSWORD']
 except Exception as e:
     nsfw_password = os.getenv('CHAT_NSFW_PASSWORD')
@@ -25,12 +24,14 @@ def get_agent(session_id, model='open-mistral-7b', ):
     print('creating the ai agent')
     return agent
 
-def query_agent(prompt, temperature=0.1, top_p=0.0):
+def query_agent(prompt, temperature=0.1, top_p=0.0, frequency_penalty=0, presence_penalty=0):
     """Query the AI agent.  Returns a string."""
     try:      
         st.session_state['agent'].query(prompt, 
                     temperature=temperature,
-                    top_p=top_p)
+                    top_p=top_p,
+                    frequency_penalty=frequency_penalty,
+                    presence_penalty=presence_penalty)
     except Exception as e:
         print('failed to query the agent')
         print(e)
@@ -72,14 +73,35 @@ def change_model():
     """Change the AI's model.  Returns nothing."""
     if 'agent' in st.session_state:
         st.session_state['agent'].set_model(st.session_state['model_name'])
-        st.session_state['agent'].set_summary_model(st.session_state['model_name'])
     else:
-        st.session_state['agent'] = get_agent(session_id)
+        if 'model_name' in st.session_state:
+            st.session_state['agent'] = get_agent(session_id, model=st.session_state['model_name'])
+        else:
+            st.session_state['agent'] = get_agent(session_id)
 
 def set_nsfw():
     """Set the AI's NSFW mode.  Returns nothing."""
     if 'nsfw' in st.session_state:
         st.session_state['agent'].nsfw = st.session_state['nsfw']
+
+def format_model_label(model):
+    labels = [('gemini-pro','gemini-pro'),
+            ('openchat 3.5','openchat/openchat-3.5-1210'),
+                ('Qwen1.5 7b','Qwen/Qwen1.5-7B-Chat'),
+                ('StripedHyena Nous 7b','togethercomputer/StripedHyena-Nous-7B'),
+            ('Nous Capybara 7b','NousResearch/Nous-Capybara-7B-V1p9'),
+            ('Vicuna 7b v1.5','lmsys/vicuna-7b-v1.5'),
+            ('Mistral 7B Instruct v0.1','mistralai/Mistral-7B-Instruct-v0.1'),
+            ('Meta Llama 2 7b','meta-llama/Llama-2-7b-chat-hf'),
+            ('Nous Hermies Llama 2 13b','NousResearch/Nous-Hermes-Llama2-13b'),
+            ('Meta Llama 2 13b','meta-llama/Llama-2-13b-chat-hf'),
+            ('MythoMax L2 13b','Gryphe/MythoMax-L2-13b'),
+            ('WizardLM 13b v1.2','WizardLM/WizardLM-13B-V1.2'),
+            ('ReMM SLERP L2 13b','Undi95/ReMM-SLERP-L2-13B'),
+            ('GPT 3.5 Turbo','gpt-3.5-turbo-0125')]
+    for label in labels:
+        if model == label[1]:
+            return label[0]
 
 # Set the title
 st.title('Chat with a Character!')
@@ -115,8 +137,10 @@ with st.container(border=True):
     # set the temperature for the model
     st.markdown('#### Model Settings')
     with col_temp:
-        temperature = st.slider('Creativity', min_value=0.1, max_value=1.0, step=0.1, value=0.1)
-        top_p = st.slider('Freedom', min_value=0.0, step=.05, max_value=1.0, value=0.0)
+        temperature = st.slider('Creativity', min_value=0.1, max_value=1.0, step=0.1, value=0.3)
+        top_p = st.slider('Freedom', min_value=0.0, step=.05, max_value=1.0, value=0.1)
+        frequency_penalty = st.slider('Diversity', min_value=-2.0, step=.05, max_value=2.0, value=1.0)
+        presence_penalty = st.slider('Novelty', min_value=-2.0, step=.05, max_value=2.0, value=1.0)
         # set the top_p value
         top_p = 1 - top_p
         if top_p == 1 or 0:
@@ -125,24 +149,19 @@ with st.container(border=True):
     # set the model
     with col_model:
         st.radio("Model to use (In ascending order of cost)", horizontal=False,
-                options=['openchat/openchat-3.5-1210',
+                options=['gemini-pro',
+                        'openchat/openchat-3.5-1210',
                          'Qwen/Qwen1.5-7B-Chat',
                          'togethercomputer/StripedHyena-Nous-7B',
-                        'NousResearch/Nous-Capybara-7B-V1p9',
-                        'google/gemma-7b-it',
                         'lmsys/vicuna-7b-v1.5',
                         'mistralai/Mistral-7B-Instruct-v0.1',
-                        'NousResearch/Nous-Hermes-llama-2-7b',
                         'meta-llama/Llama-2-7b-chat-hf',
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
-                        'lmsys/vicuna-13b-v1.5',
                         'Gryphe/MythoMax-L2-13b',
-                        'Austism/chronos-hermes-13b',
                         'WizardLM/WizardLM-13B-V1.2',
-                        'Undi95/ReMM-SLERP-L2-13B',
                         'gpt-3.5-turbo-0125'],
-                index=10,
+                index=0, format_func=format_model_label,
                 key='model_name', on_change=change_model)
     
     # set the NSFW mode
@@ -211,7 +230,9 @@ with st.expander("Conversation", expanded=True):
         with st.spinner("Thinking..."):
             query_agent(prompt, 
                         temperature=temperature,
-                        top_p=top_p)
+                        top_p=top_p,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty)
 
 # add a donate button
 col1, col2 = st.columns(2)             

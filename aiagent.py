@@ -3,7 +3,15 @@ import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import os, datetime, pickle
-from pydantic import BaseModel, Field
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+try:
+    GOOGLE_API_KEY=os.getenv('GOOGLE_API_KEY')  
+except:
+    GOOGLE_API_KEY = st.secrets['GOOGLE_API_KEY']
+
+genai.configure(api_key=GOOGLE_API_KEY)
 
     
 class Document:
@@ -13,24 +21,16 @@ class Document:
         self.page_content = content
         self.metadata = metadata
 
-class SummarySchema(BaseModel):
-    response: str = Field(description="response to user prompt")
-    summary: str = Field(description="summary of the conversation")
-
-class NoSummarySchema(BaseModel):
-    response: str = Field(description="response to user prompt")
 
 class AIAgent():
     """AIAgent class, which acts as the character to converse with
     Intialize with a character description, Defaults to: 'an attractive friend with a hidden crush'"""
 
-    def __init__(self, model='open-mistral-7b', embedding_model='gpt', summary_model='open-mistral-7b'):
+    def __init__(self, model='open-mistral-7b', embedding_model='gpt', summary_model='gpt-3.5-turbo-0125'):
         # Initialize the AI agent
         self.set_model(model)
 
         # initialize the summary model
-        if summary_model is None:
-            summary_model = 'gpt-3.5-turbo-0125'
         self.set_summary_model(summary_model)
 
         # Initialize the embeddings model
@@ -117,15 +117,18 @@ class AIAgent():
         Responses should:
 
         Use informal, conversational language fitting the character
-        Express the character's desires, opinions, goals, emotions
-        Have the character proactively make decisions and take actions
+        Express the character's desires, opinions, goals, emotions using dialogue, facial expressions, body language and actions as appropriate for the describe character.  
+        Actions, expressions, and body language should be surrounded by asterisks.
+        Have the character proactively make decisions and take actions. Feel free to advance the plot and take initiative.
         Ask questions to learn more, if relevant to the character
         Match the character's speech patterns and worldview consistently
         Only include details the character would know
         Remain fully in-character throughout
-        Begin each response with '[{self.character_name}]:' to indicate you are the character. 
+        Begin your response with '[{self.character_name}]:' to indicate you are the character.  Only do this once.
+        Speak only for your character.  Do not answer for the user.
+        Do not initiate new dialogue. 
         Keep responses 50 to 120 words as appropriate for the character's style. 
-        Use markdown formatting (italics for actions/emotions, bold for emphasis) when suitable.
+        Use markdown formatting (italics for actions/facial expression/body language, bold for emphasis) when suitable.
 
         Maintain narrative continuity by referring to your notes on:
         {self.mid_term_memory}
@@ -152,12 +155,15 @@ class AIAgent():
             except:
                 api_key = st.secrets['OPENAI_API_KEY']
             self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
+        elif 'gemini' in self.model:
+            self.agent = genai.GenerativeModel(model_name=self.model)
         else:
             try:
                 api_key = os.getenv('TOGETHER_API_KEY')     
             except:
                 api_key = st.secrets['TOGETHER_API_KEY']
             self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
+        
 
 
     def set_summary_model(self, summary_model='gpt-3.5-turbo-0125'):
@@ -168,13 +174,13 @@ class AIAgent():
                 api_key = os.getenv('OPENAI_API_KEY')
             except:
                 api_key = st.secrets['OPENAI_API_KEY']
-            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
+            self.summary_agent = openai.OpenAI(api_key=api_key, base_url="https://api.openai.com/v1")
         else:
             try:
                 api_key = os.getenv('TOGETHER_API_KEY')     
             except:
                 api_key = st.secrets['TOGETHER_API_KEY']
-            self.agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
+            self.summary_agent = openai.OpenAI(api_key=api_key, base_url="https://api.together.xyz/v1")
     
     def set_character(self, character='a friendly old man.'):
         """Change the character the AI is role-playing as.  Defaults to: 'A friendly old man.'"""
@@ -248,7 +254,7 @@ class AIAgent():
         summary_messages = self.short_term_memory[offset:self.mid_term_memory_length + offset]
         summary_messages.append(summary_prompt)
         # Choose the model to use for summarization and summarize the conversation
-        summary = self.agent.chat.completions.create(
+        summary = self.summary_agent.chat.completions.create(
             model=self.summary_model,
             messages=self.messages, # this is the conversation history
             temperature=temperature, # this is the degree of randomness of the model's output
@@ -314,6 +320,9 @@ class AIAgent():
         elif '7b' in model.lower() and '8x7b' not in model:
             input_cost = 0.0002 / 1000
             output_cost = 0.0002 / 1000
+        elif 'openchat/openchat-3.5-1210' in model.lower():
+            input_cost = 0.0002 / 1000
+            output_cost = 0.0002 / 1000
         elif 'llama-2-13b' in model.lower():
             input_cost = 0.000225 / 1000
             output_cost = 0.000225 / 1000
@@ -324,6 +333,8 @@ class AIAgent():
             print('Model not recognized')
             input_cost = 0
             output_cost = 0
+
+        print('MODEL = ', self.model)
         
         # determine the length of inputs and outputs
         input_tokens = result.usage.prompt_tokens
@@ -341,7 +352,8 @@ class AIAgent():
         return lastest_cost
 
 
-    def query(self, prompt, temperature=.3, top_p=None, max_tokens=200):
+    def query(self, prompt, temperature=.3, top_p=None, 
+              frequency_penalty=0, presence_penalty=0, max_tokens=200):
         """Query the model for a response to a prompt.  The prompt is a string of text that the AI will respond to.  
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.  
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text."""
@@ -371,28 +383,65 @@ class AIAgent():
         self.messages.append({'role':'user', 'content': self.start_ins + self.prefix + prompt + self.end_ins})
 
         # Query the model through the API
-        result = self.agent.chat.completions.create(
-            model=self.model,
-            messages=self.messages, # this is the conversation history
-            temperature=temperature, # this is the degree of randomness of the model's output
-            max_tokens=max_tokens,
-            top_p=top_p
+        if 'gemini' in self.model:
+            # configuration
+            config = genai.GenerationConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                top_p=top_p,
                 )
+            if self.nsfw:
+                safety_settings={
+                                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                                HarmCategory.HARM_CATEGORY_HARASSMENT:HarmBlockThreshold.BLOCK_NONE,
+                                HarmCategory.HARM_CATEGORY_HATE_SPEECH:HarmBlockThreshold.BLOCK_NONE,
+                                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT:HarmBlockThreshold.BLOCK_NONE,
+                                }
+            else:
+                safety_settings= None
+            # format the messages for the Gemini model
+            messages =[{'role':message['role'], 'parts':message['content']} for message in self.messages]
+            for message in messages:
+                if message['role'] == 'assistant':
+                    message['role']='model'
+            messages[0]['role']='user'
+            messages[0]['parts'] += messages[1]['parts']
+            del messages[1]
+            result = self.agent.generate_content(contents=messages,
+                                                 generation_config=config,
+                                                 safety_settings=safety_settings)
+            try:
+                content = result.text
+            except:
+                print(result)
+                return f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
+        else:    
+            result = self.agent.chat.completions.create(
+                model=self.model,
+                messages=self.messages, # this is the conversation history
+                temperature=temperature, # this is the degree of randomness of the model's output
+                frequency_penalty=frequency_penalty, #This is the penalty for using a token based on frequency in the text.
+                presence_penalty=presence_penalty, #This is penalty for using a token based on its presence in the text.
+                max_tokens=max_tokens,
+                top_p=top_p
+                    )
+            content = result.choices[0].message.content
 
         # Check For NSFW Content
         if not self.nsfw:
             moderation = openai.OpenAI().moderations.create(
-                input=result.choices[0].message.content)
+                input=content)
             flagged = moderation.results[0].flagged
             if flagged:
-                self.response = "[System]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
+                
                 print('NSFW content detected')
+                return "[System]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
             else:
-                self.response = result.choices[0].message.content
+                self.response = content
                 print('No NSFW content detected')
         else:
             # Store the response
-            self.response = result.choices[0].message.content
+            self.response = content
         
         if self.message_style_sample == None:
             self.message_style_sample = f"An example of how your character speaks is here inside triple backticks ```{self.response}```"
@@ -405,9 +454,9 @@ class AIAgent():
         
         # Add reply to message history
         self.add_message(self.response, role='assistant')
-
-        # add cost of message to total cost
-        self.count_cost(result, self.model)
+        if not 'gemini' in self.model:
+            # add cost of message to total cost
+            self.count_cost(result, self.model)
 
         if len(self.short_term_memory) >= self.max_short_term_memory_length:
             self.summarize_memories()
@@ -423,7 +472,6 @@ class AIAgent():
         self.message_style_sample = None
         self.prefix = ''
         self.response = "I'm thinking of my response"
-        self.system_message = self.set_system_message()
         self.messages = []
         self.total_cost = 0
         self.total_tokens = 0
@@ -431,6 +479,7 @@ class AIAgent():
         self.average_tokens = 0
         if hasattr(self, 'long_term_memory_index'):
             del self.long_term_memory_index
+        self.set_system_message()
         
     def get_memory(self):
         """Return the AI's current memory.  Returns a list of messages."""
