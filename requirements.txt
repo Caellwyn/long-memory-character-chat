@@ -5,3 +5,4 @@ langchain_mistralai
 langchain_community
 faiss-cpu
 mistralai
+google.generativeai
