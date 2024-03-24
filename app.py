@@ -100,8 +100,8 @@ def format_model_label(model):
     for label in labels:
         if model == label[1]:
             return label[0]
-        else:
-            return model
+        
+    return model
 
 # Set the title
 st.title('Chat with a Character!')
