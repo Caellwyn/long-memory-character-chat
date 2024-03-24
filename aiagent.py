@@ -2,7 +2,7 @@ import streamlit as st
 import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-import os, datetime, pickle
+import os, datetime, pickle, time
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -307,6 +307,9 @@ class AIAgent():
         elif '13b' in model.lower():
             input_cost = 0.0003 / 1000
             output_cost = 0.0003 / 1000
+        elif 'gemini' in model:
+            input_cost = 0
+            output_cost = 0
         else:
             print('Model not recognized')
             input_cost = 0
@@ -314,23 +317,24 @@ class AIAgent():
 
         print('MODEL = ', self.model)
 
-        if not summary:  
-            if 'gemini' in self.model:
-                messages = self.format_messages_for_gemini(self.messages)
-                self.current_memory_tokens = self.agent.count_tokens(messages).total_tokens
-                lastest_cost = 0
-            else:
-                self.current_memory_tokens = result.usage.total_tokens
-                input_tokens = result.usage.prompt_tokens
-                output_tokens = result.usage.completion_tokens
-                lastest_cost = input_cost * input_tokens + output_cost * output_tokens
+        if 'gemini' in self.model:
+            messages = self.format_messages_for_gemini(self.messages)
+            input_tokens = self.agent.count_tokens(messages[:-1]).total_tokens
+            output_tokens = self.agent.count_tokens([messages[-1]]).total_tokens
         else:
-            lastest_cost = 0
+            input_tokens = result.usage.prompt_tokens
+            output_tokens = result.usage.completion_tokens
+
+        total_tokens = input_tokens + output_tokens
+        lastest_cost = input_cost * input_tokens + output_cost * output_tokens
+        
         self.total_cost += lastest_cost
         # determine the length of inputs and outputs
         self.average_cost = self.total_cost / (len(self.chat_history) / 2)     
-        self.total_tokens += self.current_memory_tokens
-        self.average_tokens = self.total_tokens / (len(self.chat_history) / 2) 
+        self.total_tokens += total_tokens
+        self.average_tokens = self.total_tokens / (len(self.chat_history) / 2)
+        if not summary:
+            self.current_memory_tokens = total_tokens
 
         # calculate the cost
         return lastest_cost
@@ -397,14 +401,33 @@ class AIAgent():
             messages[0]['role']='user'
             messages[0]['parts'] += messages[1]['parts']
             del messages[1]
-            result = self.agent.generate_content(contents=messages,
+
+            ## attempt to query the model
+            query_successful = False
+            tries = 0
+            while not query_successful and tries <= 5:
+                print('attempting to query Gemini, try number: ', tries)
+
+                result = self.agent.generate_content(contents=messages,
                                                  generation_config=config,
                                                  safety_settings=safety_settings)
-            try:
-                content = result.text
-            except:
-                print(result)
-                content = f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
+                try:
+                    content = result.text
+                    query_successful = True
+                except:
+                    tries += 1
+                    print(result)
+                    if result.prompt_feedback.block_reason == 0:
+                        content = f'[Gemini]: I did not respond for some reason.  Please try again'
+                        time.sleep(1)
+                        
+                    else:
+                        print('NSFW content detected')
+                        print('gemini failed for reason ', result.prompt_feedback.block_reason)
+                        content = "[Gemini]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
+                        break
+                    
+                            
         else:    
             result = self.agent.chat.completions.create(
                 model=self.model,
