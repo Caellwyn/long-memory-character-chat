@@ -2,7 +2,7 @@ import streamlit as st
 import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-import os, datetime, pickle, time
+import os, datetime, pickle
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -406,7 +406,6 @@ class AIAgent():
             query_successful = False
             tries = 0
             while not query_successful and tries <= 5:
-                print('attempting to query Gemini, try number: ', tries)
 
                 result = self.agent.generate_content(contents=messages,
                                                  generation_config=config,
@@ -417,16 +416,7 @@ class AIAgent():
                 except:
                     tries += 1
                     print(result)
-                    if result.prompt_feedback.block_reason == 0:
-                        content = f'[Gemini]: I did not respond for some reason.  Please try again'
-                        time.sleep(1)
-                        
-                    else:
-                        print('NSFW content detected')
-                        print('gemini failed for reason ', result.prompt_feedback.block_reason)
-                        content = "[Gemini]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
-                        break
-                    
+                    content = f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
                             
         else:    
             result = self.agent.chat.completions.create(

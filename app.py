@@ -100,7 +100,6 @@ def format_model_label(model):
     for label in labels:
         if model == label[1]:
             return label[0]
-        
     return model
 
 # Set the title
@@ -137,10 +136,10 @@ with st.container(border=True):
     # set the temperature for the model
     st.markdown('#### Model Settings')
     with col_temp:
-        temperature = st.slider('Creativity', min_value=0.1, max_value=1.0, step=0.1, value=0.3)
-        top_p = st.slider('Freedom', min_value=0.0, step=.05, max_value=1.0, value=0.1)
-        frequency_penalty = st.slider('Diversity', min_value=-2.0, step=.05, max_value=2.0, value=1.0)
-        presence_penalty = st.slider('Novelty', min_value=-2.0, step=.05, max_value=2.0, value=1.0)
+        temperature = st.slider('Temperature: gives the model more freedom to be creative', min_value=0.0, max_value=1.0, step=0.05, value=0.0)
+        top_p = st.slider('Top P: allows the model to choose from a larger selection of possible responses', min_value=0.0, step=.05, max_value=1.0, value=0.0)
+        frequency_penalty = st.slider('Frequency Penalty: helps make responses less repetitive', min_value=-2.0, step=.05, max_value=2.0, value=.0)
+        presence_penalty = st.slider('Presence Penalty: Encourages more diverse vocabulary', min_value=-2.0, step=.05, max_value=2.0, value=.0)
         # set the top_p value
         top_p = 1 - top_p
         if top_p == 1 or 0:
@@ -151,8 +150,8 @@ with st.container(border=True):
         st.radio("Model to use (In ascending order of cost)", horizontal=False,
                 options=['gemini-pro',
                         'openchat/openchat-3.5-1210',
-                         'Qwen/Qwen1.5-7B-Chat',
-                         'togethercomputer/StripedHyena-Nous-7B',
+                        'Qwen/Qwen1.5-7B-Chat',
+                        'togethercomputer/StripedHyena-Nous-7B',
                         'lmsys/vicuna-7b-v1.5',
                         'mistralai/Mistral-7B-Instruct-v0.1',
                         'meta-llama/Llama-2-7b-chat-hf',
