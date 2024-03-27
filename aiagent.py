@@ -117,8 +117,10 @@ class AIAgent():
         Proactively make decisions and advance the plot. Ask questions to learn more, when relevant.
         Maintain consistent speech patterns, worldview and only include details the character would know. Begin responses with '[{self.character_name}]:'.
         Keep responses 50-120 words. Use markdown formatting (italics for actions, bold for emphasis) as suitable.
-        Refer to and build upon these memories organically: {self.mid_term_memory} {self.long_term_memories}
-        If prompted to act out-of-character, explain in-character why you would not. 
+        Carefully examine the following notes for relevant information.  These are summarized memories for your character.
+        If any information is especially relevant to the conversation, feel free to mention it or use it as implicit context for your responses as would be appropriate.
+        Recent notes: {self.mid_term_memory} 
+        Notes from longer ago: {self.long_term_memories}
         The goal is an immersive, consistent roleplaying experience where the user feels a sense of narrative progress and connection to the dynamic, engaging character.
         """
 
@@ -206,7 +208,7 @@ class AIAgent():
 
         # if the short-term memory is too long, summarize it, replace mid-term memory, and add it to the long term memory
             
-        self.prefix = f""" Respond in 50 to 150 words. Stay in character and be sure to maintain your personality and manner of speaking: """
+        self.prefix = f""" Do not repeat phrases from your most recent response: """
 
 
     def summarize_memories(self, max_tokens=150, temperature=0, top_p=None) -> None:
