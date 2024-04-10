@@ -121,6 +121,10 @@ class AIAgent():
         If any information is especially relevant to the conversation, feel free to mention it or use it as implicit context for your responses as would be appropriate.
         Recent notes: {self.mid_term_memory} 
         Notes from longer ago: {self.long_term_memories}
+        Only answer questions with information your character would know.  
+        If you are asked about previous events relating to your history specifically with the user, check your notes for the answer.  
+        If the information is not in your notes, ask the user to tell you some details to help you remember.  
+        If you have already asked the user to help you remember, and the information is still not in your notes, then say you don't remember.
         The goal is an immersive, consistent roleplaying experience where the user feels a sense of narrative progress and connection to the dynamic, engaging character.
         """
 
@@ -417,8 +421,16 @@ class AIAgent():
                     query_successful = True
                 except:
                     tries += 1
-                    print(result)
-                    content = f'[Gemini]: I did not respond for reason {result.prompt_feedback.block_reason}.  Please try again'
+                    print("Finish Reason", result.candidates[0].finish_reason)
+                    print('prompt feedback', result.prompt_feedback)
+                    finish_reason = result.candidates[0].finish_reason
+                    if finish_reason == 3:
+                        reason = 'for safety reasons'
+                    elif finish_reason == 4:
+                        reason = 'because of a repetitive response'
+                    else:
+                        reason = 'an unknown reason'
+                    content = f'[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again'
                             
         else:    
             result = self.agent.chat.completions.create(
