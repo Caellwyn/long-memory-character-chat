@@ -38,7 +38,7 @@ class AIAgent():
 
         # Set the character for the AI to role-play as
         self.character = 'A old emu with a tale to tell.  You desperately want someone to listen.'
-        self.location = 'The Australian outback'
+        self.location = 'The Australian Outback'
         self.user_name = 'User'
         self.character_name = 'Bill'
         self.prefix = ''      
@@ -77,7 +77,7 @@ class AIAgent():
         ## How long short-term memory can grow: 
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 8
+        self.max_short_term_memory_length = 12
         
         ## How much overlap between each summarized mid-term memory: 
         ## must be less than mid_term_memory_length

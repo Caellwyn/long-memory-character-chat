@@ -261,13 +261,13 @@ with st.container(border=True):
 
             # add a button to download the character and conversation
             st.download_button(
-                label='Download Saved Conversation',
+                label='Download Conversation',
                 data=st.session_state['pickled_agent'],
                 file_name="saved_character.pkl",
                 on_click=save_character,
                 mime="application/octet-stream")
         # add a button to clear the conversation history
-        st.button('Reset conversation', on_click=clear_history,
+        st.button('Reset Conversation', on_click=clear_history,
                        use_container_width=False)
 
     with col4:
