@@ -91,7 +91,7 @@ def format_model_label(model):
             ('StripedHyena Nous 7b','togethercomputer/StripedHyena-Nous-7B'),
             ('Nous Capybara 7b','NousResearch/Nous-Capybara-7B-V1p9'),
             ('Vicuna 7b v1.5','lmsys/vicuna-7b-v1.5'),
-            ('Mistral 7B Instruct v0.1','mistralai/Mistral-7B-Instruct-v0.1'),
+            ('Mistral 7B Instruct v0.3','mistralai/Mistral-7B-Instruct-v0.3'),
             ('Meta Llama 2 7b','meta-llama/Llama-2-7b-chat-hf'),
             ('Nous Hermies Llama 2 13b','NousResearch/Nous-Hermes-Llama2-13b'),
             ('Meta Llama 2 13b','meta-llama/Llama-2-13b-chat-hf'),
