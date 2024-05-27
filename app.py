@@ -154,7 +154,7 @@ with st.sidebar:
                         'Qwen/Qwen1.5-7B-Chat',
                         'togethercomputer/StripedHyena-Nous-7B',
                         'lmsys/vicuna-7b-v1.5',
-                        'mistralai/Mistral-7B-Instruct-v0.1',
+                        'mistralai/Mistral-7B-Instruct-v0.3',
                         'meta-llama/Llama-2-7b-chat-hf',
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
