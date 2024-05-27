@@ -96,7 +96,8 @@ def format_model_label(model):
             ('Nous Hermies Llama 2 13b','NousResearch/Nous-Hermes-Llama2-13b'),
             ('Meta Llama 2 13b','meta-llama/Llama-2-13b-chat-hf'),
             ('WizardLM 13b v1.2','WizardLM/WizardLM-13B-V1.2'),
-            ('GPT 3.5 Turbo','gpt-3.5-turbo-0125')]
+            ('GPT 3.5 Turbo','gpt-3.5-turbo-0125'),
+             ('Meta Llama-3 8b', 'meta-llama/Llama-3-8b-chat-hf')]
     for label in labels:
         if model == label[1]:
             return label[0]
@@ -158,7 +159,8 @@ with st.sidebar:
                         'NousResearch/Nous-Hermes-Llama2-13b',
                         'meta-llama/Llama-2-13b-chat-hf',
                         'WizardLM/WizardLM-13B-V1.2',
-                        'gpt-3.5-turbo-0125'],
+                        'gpt-3.5-turbo-0125',
+                        'meta-llama/Llama-3-8b-chat-hf'],
                 index=0, format_func=format_model_label,
                 key='model_name', on_change=change_model)
         
