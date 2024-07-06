@@ -281,7 +281,7 @@ class AIAgent():
     def query_long_term_memory(self, query, k=2) -> list:
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
-            memories = self.long_term_memory_index.similarity_search(query, k=k)
+            memories = self.long_term_memory_index.max_marginal_relevance_search(query, k=k)
             sorted_memories = sorted(memories, key=lambda x: x.metadata['timestamp'])
             return sorted_memories
         except Exception as e:
