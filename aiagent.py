@@ -531,5 +531,5 @@ class AIAgent():
         # De-serialize the vector db
         if 'long_term_memory_index' in loaded_attrs:
             self.long_term_memory_index = FAISS.deserialize_from_bytes(loaded_attrs['long_term_memory_index'], 
-                                                                                   self.embeddings)
+                                                                                   self.embeddings, allow_dangerous_deserialization=True)
             print('deserialized long term memory index')
