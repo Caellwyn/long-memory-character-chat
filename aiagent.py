@@ -418,7 +418,7 @@ class AIAgent:
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text.
         """
-        os.write("MODEL = ", self.model)
+        os.write(1, f"MODEL = {self.model}\n".encode())
 
         print("length of short term memory before query: ", len(self.short_term_memory))
         prompt = f"[{self.user_name}]: {prompt} "
@@ -502,7 +502,7 @@ class AIAgent:
                     content = f"[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again"
 
         elif "claude" in self.model:
-            os.write("trying claude model")
+            os.write(1, b"trying claude model\n")
             result = self.agent.messages.create(
                 model=self.model,
                 system=self.messages[0]["content"],
@@ -512,7 +512,7 @@ class AIAgent:
                 top_p=top_p,
             )
             content = result.content[0].text
-            os.write("claude content is", content)
+            os.write(1, f"claude content is, {content} \n".encode())
         else:
             result = self.agent.chat.completions.create(
                 model=self.model,

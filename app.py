@@ -173,10 +173,10 @@ with st.sidebar:
         )
         top_p = st.slider(
             "Top P: allows the model to choose from a larger selection of possible responses",
-            min_value=0.0,
+            min_value=0.05,
             step=0.05,
             max_value=1.0,
-            value=0.0,
+            value=0.05,
         )
         frequency_penalty = st.slider(
             "Frequency Penalty: helps make responses less repetitive",
