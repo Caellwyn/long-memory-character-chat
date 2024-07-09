@@ -164,7 +164,7 @@ class AIAgent:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
             except:
                 api_key = st.secrets["ANTHROPIC_API_KEY"]
-            self.agent = anthropic.Anthropic()
+            self.agent = anthropic.Anthropic(api_key=api_key)
         else:
             try:
                 api_key = os.getenv("TOGETHER_API_KEY")
