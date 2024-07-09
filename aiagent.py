@@ -163,7 +163,12 @@ class AIAgent:
             try:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
             except:
-                api_key = st.secrets["ANTHROPIC_API_KEY"]
+                try:
+                    api_key = st.secrets["ANTHROPIC_API_KEY"]
+                except Exception as e:
+                    print(e)
+
+            print("Successfully retrieved Claude API key")
             self.agent = anthropic.Anthropic(api_key=api_key)
         else:
             try:
@@ -362,8 +367,6 @@ class AIAgent:
             input_cost = 0
             output_cost = 0
 
-        print("MODEL = ", self.model)
-
         if "gemini" in self.model:
             messages = self.format_messages_for_gemini(self.messages)
             input_tokens = self.agent.count_tokens(messages[:-1]).total_tokens
@@ -415,6 +418,7 @@ class AIAgent:
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text.
         """
+        print("MODEL = ", self.model)
 
         print("length of short term memory before query: ", len(self.short_term_memory))
         prompt = f"[{self.user_name}]: {prompt} "
