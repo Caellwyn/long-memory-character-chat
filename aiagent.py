@@ -373,8 +373,8 @@ class AIAgent:
             output_tokens = self.agent.count_tokens([messages[-1]]).total_tokens
 
         elif "claude" in self.model:
-            input_tokens = result.usage["input_tokens"]
-            output_tokens = result.usage["output_tokens"]
+            input_tokens = result.usage.input_tokens
+            output_tokens = result.usage.output_tokens
 
         else:
             input_tokens = result.usage.prompt_tokens
