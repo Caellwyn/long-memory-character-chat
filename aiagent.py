@@ -368,9 +368,11 @@ class AIAgent:
             messages = self.format_messages_for_gemini(self.messages)
             input_tokens = self.agent.count_tokens(messages[:-1]).total_tokens
             output_tokens = self.agent.count_tokens([messages[-1]]).total_tokens
+
         elif "claude" in self.model:
-            input_tokens = result.usage.input_tokens
-            output_tokens = result.usage.output_tokens
+            input_tokens = result.usage["input_tokens"]
+            output_tokens = result.usage["output_tokens"]
+
         else:
             input_tokens = result.usage.prompt_tokens
             output_tokens = result.usage.completion_tokens
