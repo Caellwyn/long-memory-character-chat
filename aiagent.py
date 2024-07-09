@@ -556,6 +556,7 @@ class AIAgent:
 
         if len(self.short_term_memory) >= self.max_short_term_memory_length:
             self.summarize_memories()
+            
         return self.response
 
     def clear_history(self):
