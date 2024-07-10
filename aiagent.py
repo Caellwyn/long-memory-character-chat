@@ -81,17 +81,17 @@ class AIAgent:
 
         ## How many messages are summarized:
         ## must be even!
-        self.mid_term_memory_length = 2
+        self.mid_term_memory_length = 6
 
         ## How long short-term memory can grow:
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 4
+        self.max_short_term_memory_length = 10
 
         ## How much overlap between each summarized mid-term memory:
         ## must be less than mid_term_memory_length
         ## must be Even
-        self.mid_term_memory_overlap = 0
+        self.mid_term_memory_overlap = 2
 
         ## Checks to enforce length rules
         if self.mid_term_memory_length > self.max_short_term_memory_length:
@@ -269,16 +269,19 @@ class AIAgent:
 
         # Summary system message
         summary_prompt = {
-            "role": "user",
-            "content": f"""You are {self.character_name}'s notetaker.  It's your job to help {self.character_name} remember important things in a story.
-                        {self.character_name} is a bit forgetful, so you need to help them keep track of the conversation.
+            "role": "system",
+            "content": f"""You are {self.character_name}'s memory-maker.  
+                        It's your job to help {self.character_name} remember their current situation and any important events that have occurred for later reference.
+                        You will be given a snippet of the most recent conversation and some past memories to help you create a summary.
                         Describe the current situation and the context of the discussion, including location, date and time if possible, and any notable events.
-                        Also record {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed.
-                        Be sure to keep track of any important details or information that could be relevant to the conversation and the nature of character relationships.
-                        Use your previous notes for additional context.
-                        Your previous notes are here surrounded in backticks:`{self.mid_term_memory}` 
-                        Do not add to the conversation, only summarize it. 
-                        Your notes should be no more than 125 words.""",
+                        Also record {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed, changes in their relationship, and any important decisions made.
+                        Be sure to keep track of any important details or information that could important later.
+                        Your most recent memory is here in backticks:`{self.mid_term_memory}`
+                        Some other past memories that recently came to mind are here in double backticks:``{self.long_term_memories}``
+                        Use these memories to create context for the new memory you are creating.
+                        You are not participating in this conversation, only summarizing it.
+                        Do not anything in your response that is not already in the provided conversation.
+                        Your response should be no more than 125 words.""",
         }
 
         # Add the short-term memory to the summary, ensures a 'user' role message is first.
@@ -290,12 +293,12 @@ class AIAgent:
         summary_messages = self.short_term_memory[
             offset : self.mid_term_memory_length + offset
         ]
-        print("summary messages before formatting for gemini", summary_messages)
-        # Choose the model to use for summarization and summarize the conversation
-
-        # Save orignial summary model name in case we need to use a backup model
+        print("length of summary messages", len(summary_messages))
+        print("length of short term memory", len(self.short_term_memory))
+        # Save original summary model name in case we need to use a backup model (Because Gemini models are not always available)
         original_summary_model = self.summary_model
 
+        # Choose the model to use for summarization and summarize the conversation
         if "gemini" in self.summary_model:
             try:
                 print("attempting to use Gemini model for summary")
@@ -322,37 +325,18 @@ class AIAgent:
                     summary_messages
                 )
 
-                ## attempt to query the model
-                query_successful = False
-                tries = 0
-                print("summary messages", summary_messages)
-                while not query_successful and tries <= 5:
+                response = self.summary_agent.generate_content(
+                    generation_config=config,
+                    contents=gemini_summary_messages,
+                    safety_settings=safety_settings,
+                )
+                summary = response.text
 
-                    response = self.summary_agent.generate_content(
-                        generation_config=config,
-                        contents=gemini_summary_messages,
-                        safety_settings=safety_settings,
-                    )
-                    try:
-                        summary = response.text
-                        query_successful = True
-                    except:
-                        tries += 1
-                        print("Finish Reason", response.candidates[0].finish_reason)
-                        print("prompt feedback", response.prompt_feedback)
-                        finish_reason = response.candidates[0].finish_reason
-                        if finish_reason == 3:
-                            reason = "for safety reasons"
-                        elif finish_reason == 4:
-                            reason = "because of a repetitive response"
-                        else:
-                            reason = "an unknown reason"
-                        summary = f"[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again"
-                time.sleep(1)
             except:
                 print(
                     "Gemini model failed to load.  Using GPT-3.5-turbo-0125 model for summary"
                 )
+
                 self.set_summary_model("gpt-3.5-turbo-0125")
 
                 summary_messages.append(summary_prompt)
@@ -367,9 +351,10 @@ class AIAgent:
                 summary = response.choices[0].message.content
 
         elif "claude" in self.summary_model:
-
+            # format the messages for the Claude model (He doesn't like trailing spaces)
             summary_messages[-1]["content"] = summary_messages[-1]["content"].strip()
 
+            # Query Claude for a Summary
             response = self.summary_agent.messages.create(
                 model=self.summary_model,
                 system=summary_prompt["content"],
@@ -381,7 +366,8 @@ class AIAgent:
             summary = response.content[0].text
 
         else:
-            summary_messages.append(summary_prompt)
+            # Try to use the OpenAI API for summary
+            summary_messages.insert(0, summary_prompt)
 
             response = self.summary_agent.chat.completions.create(
                 model=self.summary_model,
@@ -480,12 +466,13 @@ class AIAgent:
             input_cost = 0
             output_cost = 0
 
-        if "gemini" in self.model:
+        if "gemini" in model:
             messages = self.format_messages_for_gemini(self.messages)
-            input_tokens = self.agent.count_tokens(messages[:-1]).total_tokens
-            output_tokens = self.agent.count_tokens([messages[-1]]).total_tokens
+            agent = genai.GenerativeModel(model_name=model)
+            input_tokens = agent.count_tokens(messages[:-1]).total_tokens
+            output_tokens = agent.count_tokens([messages[-1]]).total_tokens
 
-        elif "claude" in self.model:
+        elif "claude" in model:
             input_tokens = result.usage.input_tokens
             output_tokens = result.usage.output_tokens
 
@@ -533,7 +520,6 @@ class AIAgent:
         """
         os.write(1, f"MODEL = {self.model}\n".encode())
 
-        print("length of short term memory before query: ", len(self.short_term_memory))
         prompt = f"[{self.user_name}]: {prompt} "
         self.messages = []
         # build the full model prompt
@@ -566,6 +552,14 @@ class AIAgent:
         )
         # Query the model through the API
         if "gemini" in self.model:
+            # attempt to query the Gemini model
+            # configure the model with system instruction
+
+            self.agent = genai.GenerativeModel(
+                model_name=self.model,
+                system_instruction=self.messages[0]["content"],
+            )
+
             # configuration
             config = genai.GenerationConfig(
                 temperature=temperature,
@@ -582,25 +576,22 @@ class AIAgent:
             else:
                 safety_settings = None
             # format the messages for the Gemini model
-            messages = self.format_messages_for_gemini(self.messages)
-
-            messages[0]["role"] = "user"
-            messages[0]["parts"] += messages[1]["parts"]
-            del messages[1]
+            messages = self.format_messages_for_gemini(self.messages[-1:])
 
             ## attempt to query the model
             query_successful = False
             tries = 0
             while not query_successful and tries <= 5:
 
-                result = self.agent.generate_content(
-                    contents=messages,
-                    generation_config=config,
-                    safety_settings=safety_settings,
-                )
                 try:
+                    result = self.agent.generate_content(
+                        contents=messages,
+                        generation_config=config,
+                        safety_settings=safety_settings,
+                    )
                     content = result.text
                     query_successful = True
+
                 except:
                     tries += 1
                     print("Finish Reason", result.candidates[0].finish_reason)
@@ -615,7 +606,6 @@ class AIAgent:
                     content = f"[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again"
 
         elif "claude" in self.model:
-            os.write(1, b"trying claude model\n")
             result = self.agent.messages.create(
                 model=self.model,
                 system=self.messages[0]["content"],
@@ -625,7 +615,6 @@ class AIAgent:
                 top_p=top_p,
             )
             content = result.content[0].text
-            os.write(1, f"claude content is, {content} \n".encode())
         else:
             result = self.agent.chat.completions.create(
                 model=self.model,
