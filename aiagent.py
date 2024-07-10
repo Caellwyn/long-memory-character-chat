@@ -81,17 +81,17 @@ class AIAgent:
 
         ## How many messages are summarized:
         ## must be even!
-        self.mid_term_memory_length = 6
+        self.mid_term_memory_length = 8
 
         ## How long short-term memory can grow:
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 10
+        self.max_short_term_memory_length = 12
 
         ## How much overlap between each summarized mid-term memory:
         ## must be less than mid_term_memory_length
         ## must be Even
-        self.mid_term_memory_overlap = 2
+        self.mid_term_memory_overlap = 0
 
         ## Checks to enforce length rules
         if self.mid_term_memory_length > self.max_short_term_memory_length:
@@ -168,7 +168,6 @@ class AIAgent:
                 except Exception as e:
                     print(e)
 
-            print("Successfully retrieved Claude API key")
             self.agent = anthropic.Anthropic(api_key=api_key)
         else:
             try:
@@ -269,8 +268,8 @@ class AIAgent:
 
         # Summary system message
         summary_prompt = {
-            "role": "system",
-            "content": f"""You are {self.character_name}'s memory-maker.  
+            "role": "user",
+            "content": f"""You are {self.character_name}'s memory-maker.  You will help them remember this conversation up to this point.
                         It's your job to help {self.character_name} remember their current situation and any important events that have occurred for later reference.
                         You will be given a snippet of the most recent conversation and some past memories to help you create a summary.
                         Describe the current situation and the context of the discussion, including location, date and time if possible, and any notable events.
@@ -286,26 +285,25 @@ class AIAgent:
 
         # Add the short-term memory to the summary, ensures a 'user' role message is first.
         offset = 0
-        while self.short_term_memory[offset]["role"] != "user":
-            offset += 1
+        for memory in self.short_term_memory:
+            if memory["role"] == "user":
+                break
+            else:
+                offset += 1
 
         # add the most recent conversation to the summary
         summary_messages = self.short_term_memory[
             offset : self.mid_term_memory_length + offset
         ]
-        print("length of summary messages", len(summary_messages))
-        print("length of short term memory", len(self.short_term_memory))
+        summary_messages.append(summary_prompt)
+
         # Save original summary model name in case we need to use a backup model (Because Gemini models are not always available)
         original_summary_model = self.summary_model
 
         # Choose the model to use for summarization and summarize the conversation
         if "gemini" in self.summary_model:
             try:
-                print("attempting to use Gemini model for summary")
-                self.summary_agent = genai.GenerativeModel(
-                    model_name=self.summary_model,
-                    system_instruction=summary_prompt["content"],
-                )
+
                 config = genai.GenerationConfig(
                     max_output_tokens=max_tokens,
                     top_p=top_p,
@@ -339,8 +337,6 @@ class AIAgent:
 
                 self.set_summary_model("gpt-3.5-turbo-0125")
 
-                summary_messages.append(summary_prompt)
-
                 response = self.summary_agent.chat.completions.create(
                     model=self.summary_model,
                     messages=summary_messages,  # this is the conversation history
@@ -357,7 +353,6 @@ class AIAgent:
             # Query Claude for a Summary
             response = self.summary_agent.messages.create(
                 model=self.summary_model,
-                system=summary_prompt["content"],
                 messages=summary_messages,  # this is the conversation history
                 temperature=temperature,  # this is the degree of randomness of the model's output
                 max_tokens=max_tokens,
@@ -367,7 +362,6 @@ class AIAgent:
 
         else:
             # Try to use the OpenAI API for summary
-            summary_messages.insert(0, summary_prompt)
 
             response = self.summary_agent.chat.completions.create(
                 model=self.summary_model,
@@ -390,10 +384,15 @@ class AIAgent:
         )
 
         # remove the oldest messages from the short-term memory
-
+        print(
+            f" length of short term memories = {len(self.short_term_memory)}, truncating short term memories"
+        )
         self.short_term_memory = self.short_term_memory[
-            offset + self.mid_term_memory_length - self.mid_term_memory_overlap :
+            (offset + self.mid_term_memory_length) - self.mid_term_memory_overlap :
         ]
+        print(
+            f"short term memories truncated, new length {len(self.short_term_memory)}"
+        )
 
         if not self.summary_model == original_summary_model:
             self.set_summary_model(original_summary_model)
@@ -576,7 +575,7 @@ class AIAgent:
             else:
                 safety_settings = None
             # format the messages for the Gemini model
-            messages = self.format_messages_for_gemini(self.messages[-1:])
+            gemini_messages = self.format_messages_for_gemini(self.messages[1:])
 
             ## attempt to query the model
             query_successful = False
@@ -585,7 +584,7 @@ class AIAgent:
 
                 try:
                     result = self.agent.generate_content(
-                        contents=messages,
+                        contents=gemini_messages,
                         generation_config=config,
                         safety_settings=safety_settings,
                     )
