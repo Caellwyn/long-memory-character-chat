@@ -99,6 +99,23 @@ def change_model():
             st.session_state["agent"] = get_agent(session_id)
 
 
+def change_summary_model():
+    """Change the AI's model.  Returns nothing."""
+    if "agent" in st.session_state:
+        st.session_state["agent"].set_summary_model(
+            st.session_state["summary_model_name"]
+        )
+    else:
+        if "summary_model_name" in st.session_state:
+            st.session_state["agent"] = get_agent(
+                session_id,
+                model=st.session_state["model_name"],
+                summary_model=st.session_state["summary_model_name"],
+            )
+        else:
+            st.session_state["agent"] = get_agent(session_id)
+
+
 def set_nsfw():
     """Set the AI's NSFW mode.  Returns nothing."""
     if "nsfw" in st.session_state:
@@ -199,6 +216,20 @@ with st.sidebar:
 
         # set the model
         st.markdown("### Choose a model")
+        st.radio(
+            "Summary Models",
+            horizontal=False,
+            options=[
+                "gemini-1.5-flash",
+                "claude-3-haiku-20240307",
+                "gpt-3.5-turbo-0125",
+                "meta-llama/Llama-3-8b-chat-hf",
+            ],
+            index=1,
+            format_func=format_model_label,
+            key="summary_model_name",
+            on_change=change_summary_model,
+        )
         st.radio(
             "Models",
             horizontal=False,

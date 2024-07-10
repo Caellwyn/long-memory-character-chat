@@ -2,7 +2,7 @@ import streamlit as st
 import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-import os, datetime, pickle
+import os, datetime, pickle, time
 import google.generativeai as genai
 import anthropic
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
@@ -32,7 +32,7 @@ class AIAgent:
         self,
         model="open-mistral-7b",
         embedding_model="gpt",
-        summary_model="gpt-3.5-turbo-0125",
+        summary_model="gemini-1.5-flash",
     ):
         # Initialize the AI agent
         self.set_model(model)
@@ -81,12 +81,12 @@ class AIAgent:
 
         ## How many messages are summarized:
         ## must be even!
-        self.mid_term_memory_length = 6
+        self.mid_term_memory_length = 2
 
         ## How long short-term memory can grow:
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 12
+        self.max_short_term_memory_length = 4
 
         ## How much overlap between each summarized mid-term memory:
         ## must be less than mid_term_memory_length
@@ -190,6 +190,22 @@ class AIAgent:
             self.summary_agent = openai.OpenAI(
                 api_key=api_key, base_url="https://api.openai.com/v1"
             )
+
+        elif "gemini" in self.summary_model:
+            self.summary_agent = genai.GenerativeModel(model_name=self.summary_model)
+
+        elif "claude" in self.summary_model:
+            try:
+                api_key = os.getenv("ANTHROPIC_API_KEY")
+            except:
+                try:
+                    api_key = st.secrets["ANTHROPIC_API_KEY"]
+                except Exception as e:
+                    print(e)
+
+            print("Successfully retrieved Claude API key")
+            self.summary_agent = anthropic.Anthropic(api_key=api_key)
+
         else:
             try:
                 api_key = os.getenv("TOGETHER_API_KEY")
@@ -247,23 +263,22 @@ class AIAgent:
 
         self.prefix = f""" Do not repeat phrases from your most recent response: """
 
-    def summarize_memories(self, max_tokens=150, temperature=0, top_p=None) -> None:
+    def summarize_memories(self, max_tokens=150, temperature=0, top_p=0.05) -> None:
         """Summarize the short-term memory and add it to the mid-term memory.
         Also add the mid-term memory to the long-term memory.  Returns nothing."""
 
         # Summary system message
         summary_prompt = {
             "role": "user",
-            "content": f"""
-                        You are {self.character_name}'s notetaker.  It's your job to help {self.character_name} remember important things in a story.
+            "content": f"""You are {self.character_name}'s notetaker.  It's your job to help {self.character_name} remember important things in a story.
                         {self.character_name} is a bit forgetful, so you need to help them keep track of the conversation.
-                        Use bullet points to keep track of highlights, especially key details, descriptions of circumstances, important events, and relationships.
+                        Describe the current situation and the context of the discussion, including location, date and time if possible, and any notable events.
                         Also record {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed.
-                        Use your previous notes as a basis and update as necessary.
-                        Your previous notes are here in backticks:`{self.mid_term_memory}`  
-                        Any text in your previous notes that is contradicted by text in the current conversation should be updated.
-                        Your notes should be clear and concise and no more than 100 words
-                        """,
+                        Be sure to keep track of any important details or information that could be relevant to the conversation and the nature of character relationships.
+                        Use your previous notes for additional context.
+                        Your previous notes are here surrounded in backticks:`{self.mid_term_memory}` 
+                        Do not add to the conversation, only summarize it. 
+                        Your notes should be no more than 125 words.""",
         }
 
         # Add the short-term memory to the summary, ensures a 'user' role message is first.
@@ -275,29 +290,127 @@ class AIAgent:
         summary_messages = self.short_term_memory[
             offset : self.mid_term_memory_length + offset
         ]
-        summary_messages.append(summary_prompt)
+        print("summary messages before formatting for gemini", summary_messages)
         # Choose the model to use for summarization and summarize the conversation
-        summary = self.summary_agent.chat.completions.create(
-            model=self.summary_model,
-            messages=summary_messages,  # this is the conversation history
-            temperature=temperature,  # this is the degree of randomness of the model's output
-            max_tokens=max_tokens,
-            top_p=top_p,
-        )
-        print("LATEST SUMMARY: ", summary.choices[0].message.content)
+
+        # Save orignial summary model name in case we need to use a backup model
+        original_summary_model = self.summary_model
+
+        if "gemini" in self.summary_model:
+            try:
+                print("attempting to use Gemini model for summary")
+                self.summary_agent = genai.GenerativeModel(
+                    model_name=self.summary_model,
+                    system_instruction=summary_prompt["content"],
+                )
+                config = genai.GenerationConfig(
+                    max_output_tokens=max_tokens,
+                    top_p=top_p,
+                    temperature=temperature,
+                )
+                if self.nsfw:
+                    safety_settings = {
+                        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                    }
+                else:
+                    safety_settings = None
+                # format the messages for the Gemini model
+                gemini_summary_messages = self.format_messages_for_gemini(
+                    summary_messages
+                )
+
+                ## attempt to query the model
+                query_successful = False
+                tries = 0
+                print("summary messages", summary_messages)
+                while not query_successful and tries <= 5:
+
+                    response = self.summary_agent.generate_content(
+                        generation_config=config,
+                        contents=gemini_summary_messages,
+                        safety_settings=safety_settings,
+                    )
+                    try:
+                        summary = response.text
+                        query_successful = True
+                    except:
+                        tries += 1
+                        print("Finish Reason", response.candidates[0].finish_reason)
+                        print("prompt feedback", response.prompt_feedback)
+                        finish_reason = response.candidates[0].finish_reason
+                        if finish_reason == 3:
+                            reason = "for safety reasons"
+                        elif finish_reason == 4:
+                            reason = "because of a repetitive response"
+                        else:
+                            reason = "an unknown reason"
+                        summary = f"[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again"
+                time.sleep(1)
+            except:
+                print(
+                    "Gemini model failed to load.  Using GPT-3.5-turbo-0125 model for summary"
+                )
+                self.set_summary_model("gpt-3.5-turbo-0125")
+
+                summary_messages.append(summary_prompt)
+
+                response = self.summary_agent.chat.completions.create(
+                    model=self.summary_model,
+                    messages=summary_messages,  # this is the conversation history
+                    temperature=temperature,  # this is the degree of randomness of the model's output
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                )
+                summary = response.choices[0].message.content
+
+        elif "claude" in self.summary_model:
+
+            summary_messages[-1]["content"] = summary_messages[-1]["content"].strip()
+
+            response = self.summary_agent.messages.create(
+                model=self.summary_model,
+                system=summary_prompt["content"],
+                messages=summary_messages,  # this is the conversation history
+                temperature=temperature,  # this is the degree of randomness of the model's output
+                max_tokens=max_tokens,
+                top_p=top_p,
+            )
+            summary = response.content[0].text
+
+        else:
+            summary_messages.append(summary_prompt)
+
+            response = self.summary_agent.chat.completions.create(
+                model=self.summary_model,
+                messages=summary_messages,  # this is the conversation history
+                temperature=temperature,  # this is the degree of randomness of the model's output
+                max_tokens=max_tokens,
+                top_p=top_p,
+            )
+            summary = response.choices[0].message.content
+
+        print(f"LATEST SUMMARY: {summary}")
         # add cost of message to total cost
-        self.count_cost(summary, self.summary_model, summary=True)
+        self.count_cost(response, self.summary_model, summary=True)
         # add the current mid-term memory to the long-term memory
         if self.mid_term_memory != "nothing yet.":
             self.add_long_term_memory(self.mid_term_memory)
         # Store the summary as the new mid-term memory
-        self.mid_term_memory = f"At {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}: {summary.choices[0].message.content}"
+        self.mid_term_memory = (
+            f"At {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}: {summary}"
+        )
 
         # remove the oldest messages from the short-term memory
 
         self.short_term_memory = self.short_term_memory[
             offset + self.mid_term_memory_length - self.mid_term_memory_overlap :
         ]
+
+        if not self.summary_model == original_summary_model:
+            self.set_summary_model(original_summary_model)
 
     def add_long_term_memory(self, memory) -> None:
         """add a memory to the long-term memory vector store.  Returns nothing."""
@@ -319,7 +432,7 @@ class AIAgent:
                 [memory_document], encoder=self.embeddings
             )
 
-    def query_long_term_memory(self, query, k=2) -> list:
+    def query_long_term_memory(self, query, k=3) -> list:
         """Query the long-term memory for similar documents.  Returns a list of Document objects."""
         try:
             memories = self.long_term_memory_index.max_marginal_relevance_search(
@@ -344,7 +457,7 @@ class AIAgent:
         elif model.startswith("gpt-4"):
             input_cost = 0.01 / 1000
             output_cost = 0.03 / 1000
-        elif "7b" in model.lower() and "8x7b" not in model:
+        elif "7b" or "8b" in model.lower() and "8x7b" not in model:
             input_cost = 0.0002 / 1000
             output_cost = 0.0002 / 1000
         elif "openchat/openchat-3.5-1210" in model.lower():
@@ -398,7 +511,7 @@ class AIAgent:
         """Format the messages for the Gemini model.  Returns a list of messages."""
         messages = [
             {"role": message["role"], "parts": message["content"]}
-            for message in self.messages
+            for message in messages
         ]
         for message in messages:
             if message["role"] == "assistant":
