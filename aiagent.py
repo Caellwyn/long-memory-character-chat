@@ -269,17 +269,17 @@ class AIAgent:
         # Summary system message
         summary_prompt = {
             "role": "user",
-            "content": f"""You are {self.character_name}'s memory-maker.  You will help them remember this conversation up to this point.
+            "content": f"""You are {self.character_name}'s memory creator.  You will create a summary to help them remember the conversation up to this point.
                         It's your job to help {self.character_name} remember their current situation and any important events that have occurred for later reference.
-                        You will be given a snippet of the most recent conversation and some past memories to help you create a summary.
+                        Your summary will serve as both a short-term and long-term memory for {self.character_name}.
+                        Anything you do not include in your summary will be forgotten by {self.character_name}.
                         Describe the current situation and the context of the discussion, including location, date and time if possible, and any notable events.
                         Also record {self.character_name}'s and {self.user_name}'s opinions or feelings about topics discussed, changes in their relationship, and any important decisions made.
-                        Be sure to keep track of any important details or information that could important later.
+                        Be sure to keep track of any important details or information that could important later, for example names and information about other characters.
                         Your most recent memory is here in backticks:`{self.mid_term_memory}`
                         Some other past memories that recently came to mind are here in double backticks:``{self.long_term_memories}``
                         Use these memories to create context for the new memory you are creating.
-                        You are not participating in this conversation, only summarizing it.
-                        Do not anything in your response that is not already in the provided conversation.
+                        Do not put anything in your response that is not already in the provided conversation.
                         Your response should be no more than 125 words.""",
         }
 
