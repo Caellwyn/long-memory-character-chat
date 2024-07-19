@@ -3,6 +3,7 @@ openai
 langchain_openai
 langchain_mistralai
 langchain_community
+langchain_chroma
 faiss-cpu
 mistralai
 google.generativeai
