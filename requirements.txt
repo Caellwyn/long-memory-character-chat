@@ -8,4 +8,4 @@ faiss-cpu
 mistralai
 google.generativeai
 anthropic
-sqlite3
+pysqlite3-binary
