@@ -8,4 +8,4 @@ faiss-cpu
 mistralai
 google.generativeai
 anthropic
-sqlite3 > 3.35
+sqlite3
