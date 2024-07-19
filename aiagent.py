@@ -2,6 +2,7 @@ import streamlit as st
 import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 import os, datetime, pickle, time
 import google.generativeai as genai
 import anthropic
@@ -335,7 +336,7 @@ class AIAgent:
                     "Gemini model failed to load.  Using GPT-3.5-turbo-0125 model for summary"
                 )
 
-                self.set_summary_model("gpt-3.5-turbo-0125")
+                self.set_summary_model("gpt-4o-mini")
 
                 response = self.summary_agent.chat.completions.create(
                     model=self.summary_model,
@@ -400,7 +401,10 @@ class AIAgent:
     def add_long_term_memory(self, memory) -> None:
         """add a memory to the long-term memory vector store.  Returns nothing."""
 
-        metadata = {"id": self.current_memory_id, "timestamp": datetime.datetime.now()}
+        metadata = {
+            "id": self.current_memory_id,
+            "timestamp": str(datetime.datetime.now()),
+        }
         self.current_memory_id += 1
 
         memory_document = Document(memory, metadata)
@@ -408,10 +412,9 @@ class AIAgent:
 
         if not hasattr(self, "long_term_memory_index"):
 
-            self.long_term_memory_index = FAISS.from_documents(
+            self.long_term_memory_index = Chroma.from_documents(
                 [memory_document], self.embeddings
             )
-
         else:
             self.long_term_memory_index.add_documents(
                 [memory_document], encoder=self.embeddings
@@ -540,6 +543,7 @@ class AIAgent:
             print("no memories yet")
 
         self.set_system_message()
+        print("set system message")
 
         self.messages.append(self.system_message)
         self.messages.extend(self.short_term_memory)
@@ -553,7 +557,7 @@ class AIAgent:
         if "gemini" in self.model:
             # attempt to query the Gemini model
             # configure the model with system instruction
-
+            print("Gemini model")
             self.agent = genai.GenerativeModel(
                 model_name=self.model,
                 system_instruction=self.messages[0]["content"],
@@ -576,7 +580,6 @@ class AIAgent:
                 safety_settings = None
             # format the messages for the Gemini model
             gemini_messages = self.format_messages_for_gemini(self.messages[1:])
-
             ## attempt to query the model
             query_successful = False
             tries = 0
@@ -593,17 +596,13 @@ class AIAgent:
 
                 except:
                     tries += 1
-                    print("Finish Reason", result.candidates[0].finish_reason)
-                    print("prompt feedback", result.prompt_feedback)
-                    finish_reason = result.candidates[0].finish_reason
-                    if finish_reason == 3:
-                        reason = "for safety reasons"
-                    elif finish_reason == 4:
-                        reason = "because of a repetitive response"
+                    print("Gemini model query failed, trying again")
+                    print(f"response = {result}")
+                    if len(result.candidates) > 0:
+                        content = f"[Gemini]: I did not respond {result.candidates[0].finish_reason}.  Please adjust your prompt and try again"
                     else:
-                        reason = "an unknown reason"
-                    content = f"[Gemini]: I did not respond {reason}.  Please adjust your prompt and try again"
-
+                        content = "[Gemini]: I did not respond.  Please adjust your prompt or change models and try again"
+            print("Gemini model query successful")
         elif "claude" in self.model:
             result = self.agent.messages.create(
                 model=self.model,
@@ -694,10 +693,10 @@ class AIAgent:
         del saved_attrs["summary_agent"]
         del saved_attrs["agent"]
         del saved_attrs["embeddings"]
-        if "long_term_memory_index" in saved_attrs.keys():
-            saved_attrs["long_term_memory_index"] = saved_attrs[
-                "long_term_memory_index"
-            ].serialize_to_bytes()
+        # if "long_term_memory_index" in saved_attrs.keys():
+        #     saved_attrs["long_term_memory_index"] = saved_attrs[
+        #         "long_term_memory_index"
+        #     ].serialize_to_bytes()
         return pickle.dumps(saved_attrs)
 
     def load_agent(self, file):
@@ -712,11 +711,11 @@ class AIAgent:
         self.set_summary_model(self.summary_model)
         self.set_model(self.model)
 
-        # De-serialize the vector db
-        if "long_term_memory_index" in loaded_attrs:
-            self.long_term_memory_index = FAISS.deserialize_from_bytes(
-                loaded_attrs["long_term_memory_index"],
-                self.embeddings,
-                allow_dangerous_deserialization=True,
-            )
-            print("deserialized long term memory index")
+        # # De-serialize the vector db
+        # if "long_term_memory_index" in loaded_attrs:
+        #     self.long_term_memory_index = Chroma.deserialize_from_bytes(
+        #         loaded_attrs["long_term_memory_index"],
+        #         self.embeddings,
+        #         allow_dangerous_deserialization=True,
+        #     )
+        #     print("deserialized long term memory index")

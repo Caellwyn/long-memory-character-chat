@@ -136,7 +136,7 @@ def format_model_label(model):
         ("Meta Llama 2 13b", "meta-llama/Llama-2-13b-chat-hf"),
         ("WizardLM 13b v1.2", "WizardLM/WizardLM-13B-V1.2"),
         ("Claude 3 Haiku", "claude-3-haiku-20240307"),
-        ("GPT 3.5 Turbo", "gpt-3.5-turbo-0125"),
+        ("GPT 4o mini", "gpt-4o-mini"),
         ("Meta Llama-3 8b", "meta-llama/Llama-3-8b-chat-hf"),
     ]
     for label in labels:
@@ -222,7 +222,7 @@ with st.sidebar:
             options=[
                 "gemini-1.5-flash",
                 "claude-3-haiku-20240307",
-                "gpt-3.5-turbo-0125",
+                "gpt-4o-mini",
                 "meta-llama/Llama-3-8b-chat-hf",
             ],
             index=1,
@@ -235,6 +235,7 @@ with st.sidebar:
             horizontal=False,
             options=[
                 "gemini-1.5-flash",
+                "gpt-4o-mini",
                 "openchat/openchat-3.5-1210",
                 "Qwen/Qwen1.5-7B-Chat",
                 "togethercomputer/StripedHyena-Nous-7B",
@@ -245,7 +246,6 @@ with st.sidebar:
                 "meta-llama/Llama-2-13b-chat-hf",
                 "WizardLM/WizardLM-13B-V1.2",
                 "claude-3-haiku-20240307",
-                "gpt-3.5-turbo-0125",
                 "meta-llama/Llama-3-8b-chat-hf",
             ],
             index=0,
@@ -374,7 +374,7 @@ with col2:
 
 # display the conversation history
 with st.container(height=200):
-    for message in reversed(st.session_state["agent"].chat_history):
+    for message in reversed(st.session_state["agent"].chat_history[-100:]):
         with st.chat_message(message["role"]):
             if message["role"] == "user":
                 st.markdown(
@@ -391,9 +391,8 @@ with st.container(border=True):
     with col3:
         # st.button(':floppy_disk: Save Conversation', on_click=save_character)
 
-        # if there is a saved conversation, add buttons to reload and download the character and conversation
+        # if there is a saved conversation, add buttons to reset and download the character and conversation
         if st.session_state["pickled_agent"]:
-            # add a button to reload the character and conversation
 
             # add a button to download the character and conversation
             st.download_button(
