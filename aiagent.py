@@ -1,12 +1,7 @@
-__import__("pysqlite3")
-import sys
-
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 import streamlit as st
 import openai
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain_chroma import Chroma
 import os, datetime, pickle, time
 import google.generativeai as genai
 import anthropic
@@ -379,11 +374,14 @@ class AIAgent:
 
         print(f"LATEST SUMMARY: {summary}")
         # add cost of message to total cost
+        print("counting cost of summary")
         self.count_cost(response, self.summary_model, summary=True)
         # add the current mid-term memory to the long-term memory
         if self.mid_term_memory != "nothing yet.":
+            print("adding mid-term memory to long-term memory")
             self.add_long_term_memory(self.mid_term_memory)
         # Store the summary as the new mid-term memory
+        print("storing summary as new mid-term memory")
         self.mid_term_memory = (
             f"At {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}: {summary}"
         )
@@ -407,7 +405,6 @@ class AIAgent:
 
         metadata = {
             "id": self.current_memory_id,
-            "timestamp": str(datetime.datetime.now()),
         }
         self.current_memory_id += 1
 
@@ -416,7 +413,7 @@ class AIAgent:
 
         if not hasattr(self, "long_term_memory_index"):
 
-            self.long_term_memory_index = Chroma.from_documents(
+            self.long_term_memory_index = FAISS.from_documents(
                 [memory_document], self.embeddings
             )
         else:
@@ -430,7 +427,7 @@ class AIAgent:
             memories = self.long_term_memory_index.max_marginal_relevance_search(
                 query, k=k
             )
-            sorted_memories = sorted(memories, key=lambda x: x.metadata["timestamp"])
+            sorted_memories = sorted(memories, key=lambda x: x.metadata["id"])
             return sorted_memories
         except Exception as e:
             print("no memories found")
@@ -446,6 +443,9 @@ class AIAgent:
         if model.startswith("gpt-3"):
             input_cost = 0.0005 / 1000
             output_cost = 0.0015 / 1000
+        elif model.startswith("gpt-4o-mini"):
+            input_cost = 0.00015 / 1000
+            output_cost = 0.0006 / 1000
         elif model.startswith("gpt-4"):
             input_cost = 0.01 / 1000
             output_cost = 0.03 / 1000
@@ -697,10 +697,10 @@ class AIAgent:
         del saved_attrs["summary_agent"]
         del saved_attrs["agent"]
         del saved_attrs["embeddings"]
-        # if "long_term_memory_index" in saved_attrs.keys():
-        #     saved_attrs["long_term_memory_index"] = saved_attrs[
-        #         "long_term_memory_index"
-        #     ].serialize_to_bytes()
+        if "long_term_memory_index" in saved_attrs.keys():
+            saved_attrs["long_term_memory_index"] = saved_attrs[
+                "long_term_memory_index"
+            ].serialize_to_bytes()
         return pickle.dumps(saved_attrs)
 
     def load_agent(self, file):
@@ -714,12 +714,13 @@ class AIAgent:
 
         self.set_summary_model(self.summary_model)
         self.set_model(self.model)
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
-        # # De-serialize the vector db
-        # if "long_term_memory_index" in loaded_attrs:
-        #     self.long_term_memory_index = Chroma.deserialize_from_bytes(
-        #         loaded_attrs["long_term_memory_index"],
-        #         self.embeddings,
-        #         allow_dangerous_deserialization=True,
-        #     )
-        #     print("deserialized long term memory index")
+        # De-serialize the vector db
+        if "long_term_memory_index" in loaded_attrs:
+            self.long_term_memory_index = FAISS.deserialize_from_bytes(
+                loaded_attrs["long_term_memory_index"],
+                self.embeddings,
+                allow_dangerous_deserialization=True,
+            )
+            print("deserialized long term memory index")
