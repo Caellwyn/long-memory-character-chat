@@ -7,7 +7,7 @@ st.set_page_config(layout="wide")
 
 # get the websocket headers and session id
 try:
-    headers = _get_websocket_headers()
+    headers = st.context.headers()
     session_id = headers.get("Sec-Websocket-Key")
 except:
     session_id = "default"
@@ -137,7 +137,11 @@ def format_model_label(model):
         ("WizardLM 13b v1.2", "WizardLM/WizardLM-13B-V1.2"),
         ("Claude 3 Haiku", "claude-3-haiku-20240307"),
         ("GPT 4o mini", "gpt-4o-mini"),
-        ("Meta Llama-3 8b", "meta-llama/Llama-3-8b-chat-hf"),
+        ("Meta Llama-3 8b Chat", "meta-llama/Llama-3-8b-chat-hf"),
+        (
+            "Meta Llama-3.1 8b Instruct Turbo",
+            "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+        ),
     ]
     for label in labels:
         if model == label[1]:
@@ -236,6 +240,8 @@ with st.sidebar:
             options=[
                 "gemini-1.5-flash",
                 "gpt-4o-mini",
+                "meta-llama/Llama-3-8b-chat-hf",
+                "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
                 "openchat/openchat-3.5-1210",
                 "Qwen/Qwen1.5-7B-Chat",
                 "togethercomputer/StripedHyena-Nous-7B",
@@ -243,10 +249,8 @@ with st.sidebar:
                 "mistralai/Mistral-7B-Instruct-v0.3",
                 "meta-llama/Llama-2-7b-chat-hf",
                 "NousResearch/Nous-Hermes-Llama2-13b",
-                "meta-llama/Llama-2-13b-chat-hf",
                 "WizardLM/WizardLM-13B-V1.2",
                 "claude-3-haiku-20240307",
-                "meta-llama/Llama-3-8b-chat-hf",
             ],
             index=0,
             format_func=format_model_label,
@@ -384,7 +388,7 @@ with st.container(height=200):
                 st.markdown(message["content"])
 
 with st.container(border=True):
-    st.markdown("#### Reset, Save, Download, and Upload Coversations")
+    st.markdown("#### Reset, Save, Download, and Upload Conversations")
     # add a button to save the character and conversation
     col3, col4 = st.columns([0.2, 0.8])
 
