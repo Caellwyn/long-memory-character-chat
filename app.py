@@ -125,6 +125,7 @@ def set_nsfw():
 def format_model_label(model):
     labels = [
         ("gemini 1.5 flash", "gemini-1.5-flash"),
+        ("Nous Hermies Llama 3.1", "hermes-3-llama-3.1-405b-fp8"),
         ("openchat 3.5", "openchat/openchat-3.5-1210"),
         ("Qwen1.5 7b", "Qwen/Qwen1.5-7B-Chat"),
         ("StripedHyena Nous 7b", "togethercomputer/StripedHyena-Nous-7B"),
@@ -239,6 +240,7 @@ with st.sidebar:
             horizontal=False,
             options=[
                 "gemini-1.5-flash",
+                "hermes-3-llama-3.1-405b-fp8",
                 "gpt-4o-mini",
                 "meta-llama/Llama-3-8b-chat-hf",
                 "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",

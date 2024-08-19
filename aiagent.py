@@ -157,8 +157,10 @@ class AIAgent:
             self.agent = openai.OpenAI(
                 api_key=api_key, base_url="https://api.openai.com/v1"
             )
+
         elif "gemini" in self.model:
             self.agent = genai.GenerativeModel(model_name=self.model)
+
         elif "claude" in self.model:
             try:
                 api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -169,6 +171,23 @@ class AIAgent:
                     print(e)
 
             self.agent = anthropic.Anthropic(api_key=api_key)
+
+        elif "hermes" in self.model:
+            print("hermes model")
+            try:
+                api_key = os.getenv("LAMBDA_API_KEY")
+                print("api key retrieved from env")
+                print("api key is", api_key)
+            except:
+                print("no key in env")
+                try:
+                    api_key = st.secrets("LAMBDA_API_KEY")
+                except Exception as e:
+                    print(e)
+            self.agent = openai.OpenAI(
+                api_key=api_key, base_url="https://api.lambdalabs.com/v1"
+            )
+
         else:
             try:
                 api_key = os.getenv("TOGETHER_API_KEY")
