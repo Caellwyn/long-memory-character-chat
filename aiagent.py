@@ -176,10 +176,7 @@ class AIAgent:
             print("hermes model")
             try:
                 api_key = os.getenv("LAMBDA_API_KEY")
-                print("api key retrieved from env")
-                print("api key is", api_key)
             except:
-                print("no key in env")
                 try:
                     api_key = st.secrets("LAMBDA_API_KEY")
                 except Exception as e:
