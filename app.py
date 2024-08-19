@@ -1,15 +1,40 @@
 import streamlit as st
-from streamlit.web.server.websocket_headers import _get_websocket_headers
+from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit import runtime
 from aiagent import AIAgent
 import os
 
 st.set_page_config(layout="wide")
 
 # get the websocket headers and session id
+
+
+def get_remote_ip() -> str:
+    """Get remote ip."""
+
+    try:
+        ctx = get_script_run_ctx()
+        if ctx is None:
+            return None
+        else:
+            return ctx.session_id
+
+        # session_info = runtime.get_instance().get_client(ctx.session_id)
+    #     if session_info is None:
+    #         return None
+    except Exception as e:
+        print("could not retrieve session id", e)
+        return None
+
+    # return session_info.request.remote_ip
+
+
 try:
-    headers = st.context.headers()
-    session_id = headers.get("Sec-Websocket-Key")
+    session_id = get_remote_ip()
+    print("session id retrieved")
+
 except:
+    print("session id not retrieved")
     session_id = "default"
 
 try:
