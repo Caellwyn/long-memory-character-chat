@@ -88,7 +88,7 @@ def load_character(file):
 
 def change_model():
     """Change the AI's model.  Returns nothing."""
-    if "agent" in st.session_state:
+    if "agent" in st.session_state and "model_name" in st.session_state:
         st.session_state["agent"].set_model(st.session_state["model_name"])
     else:
         if "model_name" in st.session_state:
