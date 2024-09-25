@@ -86,12 +86,12 @@ class AIAgent:
         ## How long short-term memory can grow:
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 12
+        self.max_short_term_memory_length = 40
 
         ## How much overlap between each summarized mid-term memory:
         ## must be less than mid_term_memory_length
         ## must be Even
-        self.mid_term_memory_overlap = 0
+        self.mid_term_memory_overlap = 2
 
         ## Checks to enforce length rules
         if self.mid_term_memory_length > self.max_short_term_memory_length:
@@ -723,10 +723,32 @@ class AIAgent:
         """Load saved agent from path"""
         loaded_attrs = pickle.loads(file)
 
-        # Replace agent attributes with loaded attributes
-        for key, value in loaded_attrs.items():
-            if key in self.__dict__.keys():
-                setattr(self, key, value)
+        # Replace agent attributes with loaded attribute's
+        attrs_to_set = [
+            "system_message",
+            "character",
+            "location",
+            "user_name",
+            "character_name",
+            "short_term_memory",
+            "chat_history",
+            "mid_term_memory",
+            "current_memory_id",
+            "message_style_sample",
+            "prefix",
+            "messages",
+            "total_cost",
+            "total_tokens",
+            "current_memory_tokens",
+            "average_tokens",
+        ]
+        for attr in attrs_to_set:
+            if attr in self.__dict__.keys():
+                setattr(self, attr, loaded_attrs[attr])
+
+        # for key, value in loaded_attrs.items():
+        #     if key in self.__dict__.keys():
+        #         setattr(self, key, value)
 
         self.set_summary_model(self.summary_model)
         self.set_model(self.model)

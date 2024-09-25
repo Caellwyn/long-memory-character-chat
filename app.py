@@ -10,11 +10,12 @@ st.set_page_config(layout="wide")
 
 
 def get_remote_ip() -> str:
-    """Get remote ip."""
+    """Get session id"""
 
     try:
         ctx = get_script_run_ctx()
         if ctx is None:
+            print("no session id .")
             return None
         else:
             return ctx.session_id
@@ -29,13 +30,8 @@ def get_remote_ip() -> str:
     # return session_info.request.remote_ip
 
 
-try:
-    session_id = get_remote_ip()
-    print("session id retrieved")
+session_id = get_remote_ip()
 
-except:
-    print("session id not retrieved")
-    session_id = "default"
 
 try:
     nsfw_password = st.secrets["CHAT_NSFW_PASSWORD"]
@@ -148,6 +144,7 @@ def set_nsfw():
 
 
 def format_model_label(model):
+    """Formats the labels in the model selector"""
     labels = [
         ("gemini 1.5 flash", "gemini-1.5-flash"),
         ("Nous Hermies Llama 3.1", "hermes-3-llama-3.1-405b-fp8"),
@@ -253,9 +250,8 @@ with st.sidebar:
                 "gemini-1.5-flash",
                 "claude-3-haiku-20240307",
                 "gpt-4o-mini",
-                "meta-llama/Llama-3-8b-chat-hf",
             ],
-            index=1,
+            index=0,
             format_func=format_model_label,
             key="summary_model_name",
             on_change=change_summary_model,
@@ -267,16 +263,7 @@ with st.sidebar:
                 "gemini-1.5-flash",
                 "hermes-3-llama-3.1-405b-fp8",
                 "gpt-4o-mini",
-                "meta-llama/Llama-3-8b-chat-hf",
-                "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-                "openchat/openchat-3.5-1210",
-                "Qwen/Qwen1.5-7B-Chat",
-                "togethercomputer/StripedHyena-Nous-7B",
-                "lmsys/vicuna-7b-v1.5",
                 "mistralai/Mistral-7B-Instruct-v0.3",
-                "meta-llama/Llama-2-7b-chat-hf",
-                "NousResearch/Nous-Hermes-Llama2-13b",
-                "WizardLM/WizardLM-13B-V1.2",
                 "claude-3-haiku-20240307",
             ],
             index=0,
@@ -336,7 +323,7 @@ with st.container(border=True):
     with col1:
         # user name
         st.text_input(
-            "Your Name",
+            "The User's Name",
             value=st.session_state["agent"].user_name,
             max_chars=30,
             key="user_name",
@@ -346,7 +333,7 @@ with st.container(border=True):
     with col2:
         # character name
         st.text_input(
-            "The Character' Name",
+            "The Character's Name",
             value=st.session_state["agent"].character_name,
             max_chars=30,
             key="character_name",
