@@ -545,7 +545,6 @@ class AIAgent:
                     doc.page_content for doc in returned_memories
                 }  # Remove duplicate memories
                 self.long_term_memories = " : ".join(retrieved_memories)
-                for i, memory in enumerate(retrieved_memories):
             else:
                 print("no memories retrieved")
         else:
