@@ -46,7 +46,6 @@ def get_agent(
 ):
     """Create an AI agent.  Returns an AIAgent object."""
     agent = AIAgent(model=model)
-    print("creating the ai agent")
     return agent
 
 
