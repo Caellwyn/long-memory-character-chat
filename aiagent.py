@@ -86,7 +86,7 @@ class AIAgent:
         ## How long short-term memory can grow:
         ## must be greater than mid_term_memory_length
         ## must be even
-        self.max_short_term_memory_length = 40
+        self.max_short_term_memory_length = 16
 
         ## How much overlap between each summarized mid-term memory:
         ## must be less than mid_term_memory_length
