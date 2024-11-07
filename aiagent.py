@@ -173,7 +173,6 @@ class AIAgent:
             self.agent = anthropic.Anthropic(api_key=api_key)
 
         elif "hermes" in self.model:
-            print("hermes model")
             try:
                 api_key = os.getenv("LAMBDA_API_KEY")
             except:
@@ -218,7 +217,6 @@ class AIAgent:
                 except Exception as e:
                     print(e)
 
-            print("Successfully retrieved Claude API key")
             self.summary_agent = anthropic.Anthropic(api_key=api_key)
 
         else:
@@ -390,28 +388,21 @@ class AIAgent:
 
         print(f"LATEST SUMMARY: {summary}")
         # add cost of message to total cost
-        print("counting cost of summary")
         self.count_cost(response, self.summary_model, summary=True)
         # add the current mid-term memory to the long-term memory
         if self.mid_term_memory != "nothing yet.":
-            print("adding mid-term memory to long-term memory")
             self.add_long_term_memory(self.mid_term_memory)
         # Store the summary as the new mid-term memory
-        print("storing summary as new mid-term memory")
         self.mid_term_memory = (
             f"At {datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')}: {summary}"
         )
 
         # remove the oldest messages from the short-term memory
-        print(
-            f" length of short term memories = {len(self.short_term_memory)}, truncating short term memories"
-        )
+
         self.short_term_memory = self.short_term_memory[
             (offset + self.mid_term_memory_length) - self.mid_term_memory_overlap :
         ]
-        print(
-            f"short term memories truncated, new length {len(self.short_term_memory)}"
-        )
+
 
         if not self.summary_model == original_summary_model:
             self.set_summary_model(original_summary_model)
@@ -554,16 +545,13 @@ class AIAgent:
                     doc.page_content for doc in returned_memories
                 }  # Remove duplicate memories
                 self.long_term_memories = " : ".join(retrieved_memories)
-                print("retrieved memories")
                 for i, memory in enumerate(retrieved_memories):
-                    print(f"<<Vector DB retrieved Memory {i}>>:\n", memory)
             else:
                 print("no memories retrieved")
         else:
             print("no memories yet")
 
         self.set_system_message()
-        print("set system message")
 
         self.messages.append(self.system_message)
         self.messages.extend(self.short_term_memory)
@@ -577,7 +565,6 @@ class AIAgent:
         if "gemini" in self.model:
             # attempt to query the Gemini model
             # configure the model with system instruction
-            print("Gemini model")
             self.agent = genai.GenerativeModel(
                 model_name=self.model,
                 system_instruction=self.messages[0]["content"],
@@ -622,7 +609,6 @@ class AIAgent:
                         content = f"[Gemini]: I did not respond {result.candidates[0].finish_reason}.  Please adjust your prompt and try again"
                     else:
                         content = "[Gemini]: I did not respond.  Please adjust your prompt or change models and try again"
-            print("Gemini model query successful")
         elif "claude" in self.model:
             result = self.agent.messages.create(
                 model=self.model,
@@ -651,11 +637,9 @@ class AIAgent:
             flagged = moderation.results[0].flagged
             if flagged:
 
-                print("NSFW content detected")
                 return "[System]: I'm sorry, this response has been flagged as NSFW and cannot be shown."
             else:
                 self.response = content
-                print("No NSFW content detected")
         else:
             # Store the response
             self.response = content
@@ -761,4 +745,3 @@ class AIAgent:
                 self.embeddings,
                 allow_dangerous_deserialization=True,
             )
-            print("deserialized long term memory index")
