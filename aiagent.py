@@ -434,8 +434,7 @@ class AIAgent:
             memories = self.long_term_memory_index.max_marginal_relevance_search(
                 query, k=k
             )
-            sorted_memories = sorted(memories, key=lambda x: x.metadata["id"])
-            return sorted_memories
+            return memories
         except Exception as e:
             print("no memories found")
             print(e)
@@ -531,7 +530,6 @@ class AIAgent:
         The temperature is the degree of randomness of the model's output.  The lower the temperature, the more deterministic the output.
         The higher the temperature, the more random the output.  The default temperature is .3.  The response is a string of text.
         """
-        os.write(1, f"MODEL = {self.model}\n".encode())
 
         prompt = f"[{self.user_name}]: {prompt} "
         self.messages = []
