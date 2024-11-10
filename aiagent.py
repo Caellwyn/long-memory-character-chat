@@ -18,9 +18,10 @@ genai.configure(api_key=GOOGLE_API_KEY)
 class Document:
     """Document class for storing text and metadata together.  This is used for storing long-term memory."""
 
-    def __init__(self, content, metadata):
+    def __init__(self, content, metadata, id):
         self.page_content = content
         self.metadata = metadata
+        self.id = id
 
 
 class AIAgent:
@@ -410,12 +411,11 @@ class AIAgent:
     def add_long_term_memory(self, memory) -> None:
         """add a memory to the long-term memory vector store.  Returns nothing."""
 
-        metadata = {
-            "id": self.current_memory_id,
-        }
+        metadata = {}
+
+        memory_document = Document(memory, metadata, self.current_memory_id)
         self.current_memory_id += 1
 
-        memory_document = Document(memory, metadata)
         # Use the OpenAIEmbeddings object for generating the embedding
 
         if not hasattr(self, "long_term_memory_index"):
