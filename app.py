@@ -260,7 +260,7 @@ with st.sidebar:
             horizontal=False,
             options=[
                 "gemini-1.5-flash",
-                "hermes-3-llama-3.1-405b-fp8",
+                # "hermes-3-llama-3.1-405b-fp8",
                 "gpt-4o-mini",
                 "mistralai/Mistral-7B-Instruct-v0.3",
                 "claude-3-haiku-20240307",
