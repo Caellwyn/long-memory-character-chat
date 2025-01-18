@@ -265,6 +265,7 @@ with st.sidebar:
                 "gpt-4o-mini",
                 "mistralai/Mistral-7B-Instruct-v0.3",
                 "claude-3-haiku-20240307",
+                "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
             ],
             index=0,
             format_func=format_model_label,
