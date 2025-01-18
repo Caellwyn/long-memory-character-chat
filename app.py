@@ -164,6 +164,7 @@ def format_model_label(model):
             "Meta Llama-3.1 8b Instruct Turbo",
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
         ),
+        ("Llama 3.3 70B", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
     ]
     for label in labels:
         if model == label[1]:
