@@ -145,7 +145,7 @@ def set_nsfw():
 def format_model_label(model):
     """Formats the labels in the model selector"""
     labels = [
-        ("gemini 1.5 flash", "gemini-1.5-flash"),
+        ("gemini 2.5 flash", "gemini-2.5-flash"),
         ("Nous Hermies Llama 3.1", "hermes-3-llama-3.1-405b-fp8"),
         ("openchat 3.5", "openchat/openchat-3.5-1210"),
         ("Qwen1.5 7b", "Qwen/Qwen1.5-7B-Chat"),
@@ -155,7 +155,7 @@ def format_model_label(model):
         ("Mistral 7B Instruct v0.3", "mistralai/Mistral-7B-Instruct-v0.3"),
         ("Meta Llama 2 7b", "meta-llama/Llama-2-7b-chat-hf"),
         ("Nous Hermies Llama 2 13b", "NousResearch/Nous-Hermes-Llama2-13b"),
-        ("Meta Llama 2 13b", "meta-llama/Llama-2-13b-chat-hf"),
+        ("Meta Llama 3.3 70b", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"),
         ("WizardLM 13b v1.2", "WizardLM/WizardLM-13B-V1.2"),
         ("Claude 3 Haiku", "claude-3-haiku-20240307"),
         ("GPT 4o mini", "gpt-4o-mini"),
@@ -247,7 +247,7 @@ with st.sidebar:
             "Summary Models",
             horizontal=False,
             options=[
-                "gemini-1.5-flash",
+                "gemini-2.5-flash",
                 "claude-3-haiku-20240307",
                 "gpt-4o-mini",
             ],
@@ -260,7 +260,7 @@ with st.sidebar:
             "Models",
             horizontal=False,
             options=[
-                "gemini-1.5-flash",
+                "gemini-2.5-flash",
                 # "hermes-3-llama-3.1-405b-fp8",
                 "gpt-4o-mini",
                 "mistralai/Mistral-7B-Instruct-v0.3",
