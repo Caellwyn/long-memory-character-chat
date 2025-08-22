@@ -33,7 +33,7 @@ class AIAgent:
         self,
         model="open-mistral-7b",
         embedding_model="gpt",
-        summary_model="gemini-1.5-flash",
+        summary_model="gemini-2.5-flash",
     ):
         # Initialize the AI agent
         self.set_model(model)
