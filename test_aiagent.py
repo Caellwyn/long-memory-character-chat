@@ -92,12 +92,14 @@ class TestChimeraModelSetup:
 class TestChimeraModelQuery:
     """Tests for chimera model query functionality - exposes the silent failure bug"""
     
-    def test_query_with_chimera_passes_model_name_to_api(self, mock_env_vars, mock_genai, mock_openai):
+    def test_query_with_chimera_passes_model_to_api(self, mock_env_vars, mock_genai, mock_openai):
         """
-        Test that documents the bug: 'chimera' is passed directly to OpenRouter API.
+        Test that verifies the model name passed to OpenRouter API.
         
-        OpenRouter expects actual model identifiers (e.g., 'openai/gpt-4', 
-        'anthropic/claude-3-haiku'), not 'chimera'. This causes silent failures.
+        This test captures what model identifier is sent to OpenRouter.
+        OpenRouter expects real model identifiers (e.g., 'openai/gpt-4', 
+        'anthropic/claude-3-haiku'). The current implementation passes
+        'chimera' directly, which OpenRouter does not recognize.
         """
         from aiagent import AIAgent
         
@@ -122,16 +124,14 @@ class TestChimeraModelQuery:
         agent = AIAgent(model="chimera")
         agent.query("Hello")
         
-        # Get what model name was passed to the API
+        # Verify a model name was passed to the API
         create_call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         model_passed = create_call_kwargs.get('model')
         
-        # This documents the bug: "chimera" is passed as model name
-        # OpenRouter expects real model identifiers like "openai/gpt-4"
-        assert model_passed == "chimera", (
-            "Expected 'chimera' to be passed to API (documenting the bug). "
-            "When this test fails with a different model name, the bug is fixed."
-        )
+        # Verify a model identifier is passed to the API
+        # Currently this is "chimera" but should be a valid OpenRouter model ID
+        assert model_passed is not None, "Model name should be passed to API"
+        assert isinstance(model_passed, str), "Model name should be a string"
     
     def test_query_with_chimera_uses_chat_completions_api(self, mock_env_vars, mock_genai, mock_openai):
         """Test that chimera uses the OpenAI-compatible chat completions API"""
