@@ -178,11 +178,21 @@ class AIAgent:
                 api_key = os.getenv("LAMBDA_API_KEY")
             except:
                 try:
-                    api_key = st.secrets("LAMBDA_API_KEY")
+                    api_key = st.secrets["LAMBDA_API_KEY"]
                 except Exception as e:
                     print(e)
             self.agent = openai.OpenAI(
                 api_key=api_key, base_url="https://api.lambdalabs.com/v1"
+            )
+
+        elif "chimera" in self.model:
+            try:
+                api_key = os.getenv("OPEN_ROUTER_API_KEY")
+            except:
+                api_key = st.secrets["OPEN_ROUTER_API_KEY"]
+            # Use OpenRouter via the OpenAI-compatible client
+            self.agent = openai.OpenAI(
+                api_key=api_key, base_url="https://openrouter.ai/api/v1"
             )
 
         else:
@@ -219,6 +229,15 @@ class AIAgent:
                     print(e)
 
             self.summary_agent = anthropic.Anthropic(api_key=api_key)
+
+        elif "chimera" in self.summary_model:
+            try:
+                api_key = os.getenv("OPEN_ROUTER_API_KEY")
+            except:
+                api_key = st.secrets["OPEN_ROUTER_API_KEY"]
+            self.summary_agent = openai.OpenAI(
+                api_key=api_key, base_url="https://openrouter.ai/api/v1"
+            )
 
         else:
             try:
