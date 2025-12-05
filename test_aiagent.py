@@ -88,20 +88,31 @@ class TestChimeraModelSetup:
         openrouter_calls = [c for c in calls if c.kwargs.get('base_url') == "https://openrouter.ai/api/v1"]
         assert len(openrouter_calls) > 0
 
+    def test_get_api_model_name_maps_chimera(self, mock_env_vars, mock_genai, mock_openai):
+        """Test that _get_api_model_name correctly maps chimera to OpenRouter model ID"""
+        from aiagent import AIAgent, CHIMERA_MODEL_ID
+        
+        agent = AIAgent(model="gpt-4o-mini")
+        
+        # Test chimera mapping
+        assert agent._get_api_model_name("chimera") == CHIMERA_MODEL_ID
+        
+        # Test that other models are returned unchanged
+        assert agent._get_api_model_name("gpt-4o-mini") == "gpt-4o-mini"
+        assert agent._get_api_model_name("claude-3-haiku") == "claude-3-haiku"
+
 
 class TestChimeraModelQuery:
     """Tests for chimera model query functionality - exposes the silent failure bug"""
     
-    def test_query_with_chimera_passes_model_to_api(self, mock_env_vars, mock_genai, mock_openai):
+    def test_query_with_chimera_passes_correct_model_to_api(self, mock_env_vars, mock_genai, mock_openai):
         """
-        Test that verifies the model name passed to OpenRouter API.
+        Test that verifies the correct OpenRouter model identifier is passed to the API.
         
-        This test captures what model identifier is sent to OpenRouter.
-        OpenRouter expects real model identifiers (e.g., 'openai/gpt-4', 
-        'anthropic/claude-3-haiku'). The current implementation passes
-        'chimera' directly, which OpenRouter does not recognize.
+        When using 'chimera' as the model, the code should map it to the actual
+        OpenRouter model identifier 'tngtech/tng-r1t-chimera:free'.
         """
-        from aiagent import AIAgent
+        from aiagent import AIAgent, CHIMERA_MODEL_ID
         
         # Setup mock response
         mock_completion = Mock()
@@ -124,14 +135,13 @@ class TestChimeraModelQuery:
         agent = AIAgent(model="chimera")
         agent.query("Hello")
         
-        # Verify a model name was passed to the API
+        # Verify the correct OpenRouter model identifier is passed to the API
         create_call_kwargs = mock_client.chat.completions.create.call_args.kwargs
         model_passed = create_call_kwargs.get('model')
         
-        # Verify a model identifier is passed to the API
-        # Currently this is "chimera" but should be a valid OpenRouter model ID
-        assert model_passed is not None, "Model name should be passed to API"
-        assert isinstance(model_passed, str), "Model name should be a string"
+        assert model_passed == CHIMERA_MODEL_ID, (
+            f"Expected '{CHIMERA_MODEL_ID}' to be passed to API, got '{model_passed}'"
+        )
     
     def test_query_with_chimera_uses_chat_completions_api(self, mock_env_vars, mock_genai, mock_openai):
         """Test that chimera uses the OpenAI-compatible chat completions API"""

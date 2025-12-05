@@ -14,6 +14,9 @@ except:
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+# OpenRouter model identifier for chimera
+CHIMERA_MODEL_ID = "tngtech/tng-r1t-chimera:free"
+
 
 class Document:
     """Document class for storing text and metadata together.  This is used for storing long-term memory."""
@@ -204,6 +207,15 @@ class AIAgent:
                 api_key=api_key, base_url="https://api.together.xyz/v1"
             )
 
+    def _get_api_model_name(self, model_name: str) -> str:
+        """Get the actual API model name for a given model identifier.
+        
+        Maps internal model names (like 'chimera') to their actual API identifiers.
+        """
+        if model_name == "chimera":
+            return CHIMERA_MODEL_ID
+        return model_name
+
     def set_summary_model(self, summary_model="gpt-3.5-turbo-0125") -> None:
         """Change the model the AI uses to summarize conversations.  Defaults to: 'open-mistral-7b'"""
         self.summary_model = summary_model
@@ -372,7 +384,7 @@ class AIAgent:
                 self.set_summary_model("gpt-4o-mini")
 
                 response = self.summary_agent.chat.completions.create(
-                    model=self.summary_model,
+                    model=self._get_api_model_name(self.summary_model),
                     messages=summary_messages,  # this is the conversation history
                     temperature=temperature,  # this is the degree of randomness of the model's output
                     max_tokens=max_tokens,
@@ -398,7 +410,7 @@ class AIAgent:
             # Try to use the OpenAI API for summary
 
             response = self.summary_agent.chat.completions.create(
-                model=self.summary_model,
+                model=self._get_api_model_name(self.summary_model),
                 messages=summary_messages,  # this is the conversation history
                 temperature=temperature,  # this is the degree of randomness of the model's output
                 max_tokens=max_tokens,
@@ -637,7 +649,7 @@ class AIAgent:
             content = result.content[0].text
         else:
             result = self.agent.chat.completions.create(
-                model=self.model,
+                model=self._get_api_model_name(self.model),
                 messages=self.messages,  # this is the conversation history
                 temperature=temperature,  # this is the degree of randomness of the model's output
                 frequency_penalty=frequency_penalty,  # This is the penalty for using a token based on frequency in the text.
