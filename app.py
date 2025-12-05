@@ -164,7 +164,8 @@ def format_model_label(model):
             "Meta Llama-3.1 8b Instruct Turbo",
             "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
         ),
-        ("Llama 3.3 70B", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free")
+        ("Llama 3.3 70B", "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"),
+        ("Chimera (OpenRouter)", "chimera"),
     ]
     for label in labels:
         if model == label[1]:
@@ -186,7 +187,7 @@ with st.expander("Disclaimer", expanded=False):
 
             \n * The character is not a real person and does not have real emotions or thoughts.
 
-            \n * While I do not keep any of your information after you navigate away or refresh the page, it is being sent to 3rd party servers for processing.  Please do not share any personal information with the character.
+            \n * While I do not keep any of your information after you navigate away or refresh the page, it is being sent to 3rd party servers for processing.  Please do not share any personal inform[...]
 
             \n * The character is not a substitute for professional advice.
 
@@ -265,7 +266,8 @@ with st.sidebar:
                 "gpt-4o-mini",
                 "mistralai/Mistral-7B-Instruct-v0.3",
                 "claude-3-haiku-20240307",
-                "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+                "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                "chimera",
             ],
             index=0,
             format_func=format_model_label,
